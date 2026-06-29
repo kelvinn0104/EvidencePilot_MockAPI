@@ -63,7 +63,7 @@ export default function Workspace() {
   const [activeTab, setActiveTab] = useState('Source');
   const [editorMode, setEditorMode] = useState('Code');
   const [showHistoryModal, setShowHistoryModal] = useState(false);
-  const [showReviseModal, setShowReviseModal] = useState(false);
+
   const [toastMessage, setToastMessage] = useState('');
   const [showSubmitReviewModal, setShowSubmitReviewModal] = useState(false);
   const [selectedInstructorId, setSelectedInstructorId] = useState('');
@@ -99,6 +99,31 @@ export default function Workspace() {
   const [aiReviewResult, setAiReviewResult] = useState(null);
 
   const [codeContent, setCodeContent] = useState('');
+  const [codeHistory, setCodeHistory] = useState(['']);
+  const [historyIndex, setHistoryIndex] = useState(0);
+  const [showSymbolMenu, setShowSymbolMenu] = useState(false);
+  const [showTextSizeMenu, setShowTextSizeMenu] = useState(false);
+  const [showSearchPanel, setShowSearchPanel] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [replaceQuery, setReplaceQuery] = useState('');
+  const [editorWidth, setEditorWidth] = useState(50); // percentage
+  const [fileTreeWidth, setFileTreeWidth] = useState(256); // pixels
+  const [rightDrawerWidth, setRightDrawerWidth] = useState(380); // pixels
+
+  const updateCode = (newVal) => {
+    setCodeContent(newVal);
+    const nextHistory = codeHistory.slice(0, historyIndex + 1);
+    nextHistory.push(newVal);
+    setCodeHistory(nextHistory);
+    setHistoryIndex(nextHistory.length - 1);
+  };
+
+  const loadCode = (newVal) => {
+    const text = newVal || '';
+    setCodeContent(text);
+    setCodeHistory([text]);
+    setHistoryIndex(0);
+  };
 
   // Trạng thái cho Đối chiếu AI & Luận điểm
   // Trạng thái cho Sơ đồ liên kết 10 Papers
@@ -377,7 +402,7 @@ export default function Workspace() {
           const matchedPaper = paperList.find(p => String(p.id) === String(savedPaperId));
           const defaultPaper = matchedPaper || paperList[0];
           setSelectedPaper(defaultPaper);
-          setCodeContent(defaultPaper.extractedText || defaultPaper.content || '');
+          loadCode(defaultPaper.extractedText || defaultPaper.content || '');
           localStorage.setItem('current_selected_paper_id', defaultPaper.id);
         } else {
         }
@@ -500,7 +525,7 @@ export default function Workspace() {
         setClaims([]);
         setFeedbacks([]);
         setGraphData(null);
-        setCodeContent('');
+        loadCode('');
         setSelectedPaper(null);
         navigate('/student/projects');
       }
@@ -580,7 +605,7 @@ export default function Workspace() {
       // Chọn paper mới tải lên làm hiện tại
       const uploadedPaper = res.data;
       setSelectedPaper(uploadedPaper);
-      setCodeContent(uploadedPaper.extractedText || '');
+      loadCode(uploadedPaper.extractedText || '');
     } catch (err) {
       console.error('Upload paper failed', err);
       showToast("Tải lên bản nháp thất bại.");
@@ -602,10 +627,10 @@ export default function Workspace() {
       if (selectedPaper && selectedPaper.id === paperId) {
         if (paperList.length > 0) {
           setSelectedPaper(paperList[0]);
-          setCodeContent(paperList[0].extractedText || '');
+          loadCode(paperList[0].extractedText || '');
         } else {
           setSelectedPaper(null);
-          setCodeContent('');
+          loadCode('');
         }
       }
     } catch (err) {
@@ -902,29 +927,254 @@ export default function Workspace() {
     } else if (tagType === 'italic') {
       insertion = `\\textit{${selectedText || 'chữ_in_nghiêng'}}`;
       cursorOffset = 8;
+    } else if (tagType === 'section') {
+      insertion = `\\section{${selectedText || 'Tiêu đề'}}`;
+      cursorOffset = 9;
+    } else if (tagType === 'subsection') {
+      insertion = `\\subsection{${selectedText || 'Tiêu đề phụ'}}`;
+      cursorOffset = 12;
+    } else if (tagType === 'subsubsection') {
+      insertion = `\\subsubsection{${selectedText || 'Tiêu đề phụ 2'}}`;
+      cursorOffset = 15;
+    } else if (tagType === 'large') {
+      insertion = `{\\large ${selectedText || 'Văn bản lớn'}}`;
+      cursorOffset = 8;
+    } else if (tagType === 'small') {
+      insertion = `{\\small ${selectedText || 'Văn bản nhỏ'}}`;
+      cursorOffset = 8;
+    } else if (tagType === 'inline-math') {
+      insertion = `$${selectedText || 'E=mc^2'}$`;
+      cursorOffset = 1;
     } else if (tagType === 'list') {
       insertion = `\n\\begin{itemize}\n  \\item ${selectedText || 'mục_1'}\n\\end{itemize}\n`;
       cursorOffset = 21;
     } else if (tagType === 'equation') {
       insertion = `\\begin{equation}\n  ${selectedText || 'E = mc^2'}\n\\end{equation}`;
       cursorOffset = 18;
+    } else if (tagType === 'comment') {
+      insertion = `% ${selectedText || 'Bình luận của bạn'}`;
+      cursorOffset = 2;
+    } else if (tagType === 'label') {
+      const name = prompt('Nhập tên nhãn (Label name):', 'sec:introduction') || 'sec:label';
+      insertion = `\\label{${name}}`;
+      cursorOffset = insertion.length;
+    } else if (tagType === 'cite') {
+      const citeKey = prompt('Nhập mã trích dẫn (Citation key):', 'author2026') || 'key';
+      insertion = `\\cite{${citeKey}}`;
+      cursorOffset = insertion.length;
+    } else if (tagType === 'link') {
+      const url = prompt('Nhập liên kết (URL):', 'https://example.com') || 'https://';
+      const label = selectedText || prompt('Nhập nhãn liên kết (Link label):', 'Xem chi tiết') || 'Link';
+      insertion = `\\href{${url}}{${label}}`;
+      cursorOffset = insertion.length;
+    } else if (tagType === 'figure') {
+      insertion = `\n\\begin{figure}[h]\n  \\centering\n  \\includegraphics[width=0.8\\textwidth]{image.png}\n  \\caption{${selectedText || 'Tên hình ảnh'}}\n  \\label{fig:label}\n\\end{figure}\n`;
+      cursorOffset = 83;
+    } else if (tagType === 'table') {
+      insertion = `\n\\begin{table}[h]\n  \\centering\n  \\begin{tabular}{|c|c|}\n    \\hline\n    Cột 1 & Cột 2 \\\\\n    \\hline\n    ${selectedText || 'Dòng 1'} & Dòng 1 \\\\\n    Dòng 2 & Dòng 2 \\\\\n    \\hline\n  \\end{tabular}\n  \\caption{Tên bảng}\n  \\label{tab:table}\n\\end{table}\n`;
+      cursorOffset = 120;
     } else if (tagType === 'hl') {
       insertion = `\\hl{${selectedText || 'văn_bản_nổi_bật'}}`;
       cursorOffset = 4;
     }
 
     const newContent = text.substring(0, start) + insertion + text.substring(end);
-    setCodeContent(newContent);
+    updateCode(newContent);
     showToast(`Đã chèn mẫu định dạng LaTeX.`);
 
     setTimeout(() => {
       textarea.focus();
-      if (selectedText) {
+      if (selectedText && tagType !== 'link' && tagType !== 'label' && tagType !== 'cite') {
         textarea.setSelectionRange(start, start + insertion.length);
       } else {
         textarea.setSelectionRange(start + cursorOffset, start + cursorOffset);
       }
     }, 50);
+  };
+
+  const handleUndo = () => {
+    if (historyIndex > 0) {
+      const prevIndex = historyIndex - 1;
+      setHistoryIndex(prevIndex);
+      setCodeContent(codeHistory[prevIndex]);
+      showToast('Đã hoàn tác (Undo).');
+    }
+  };
+
+  const handleRedo = () => {
+    if (historyIndex < codeHistory.length - 1) {
+      const nextIndex = historyIndex + 1;
+      setHistoryIndex(nextIndex);
+      setCodeContent(codeHistory[nextIndex]);
+      showToast('Đã làm lại (Redo).');
+    }
+  };
+
+  const insertSymbol = (sym) => {
+    const textarea = document.getElementById('latex-textarea');
+    if (!textarea) return;
+
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const text = displayContent;
+    const insertion = sym;
+
+    const newContent = text.substring(0, start) + insertion + text.substring(end);
+    updateCode(newContent);
+    showToast(`Đã chèn ký tự Hy Lạp: ${sym}`);
+
+    setTimeout(() => {
+      textarea.focus();
+      textarea.setSelectionRange(start + insertion.length, start + insertion.length);
+    }, 50);
+  };
+
+  const handleFindReplace = (replaceAll = false) => {
+    if (!searchQuery) return;
+    const text = displayContent;
+    if (replaceAll) {
+      const newContent = text.replaceAll(searchQuery, replaceQuery);
+      updateCode(newContent);
+      showToast(`Đã thay thế tất cả các chuỗi '${searchQuery}'.`);
+    } else {
+      const textarea = document.getElementById('latex-textarea');
+      if (textarea) {
+        const start = textarea.selectionStart;
+        const end = textarea.selectionEnd;
+        const selectedText = text.substring(start, end);
+        if (selectedText === searchQuery) {
+          const newContent = text.substring(0, start) + replaceQuery + text.substring(end);
+          updateCode(newContent);
+          showToast(`Đã thay thế chuỗi được chọn.`);
+          setTimeout(() => {
+            textarea.focus();
+            textarea.setSelectionRange(start, start + replaceQuery.length);
+          }, 50);
+          return;
+        }
+      }
+      const index = text.indexOf(searchQuery);
+      if (index !== -1) {
+        const newContent = text.substring(0, index) + replaceQuery + text.substring(index + searchQuery.length);
+        updateCode(newContent);
+        showToast(`Đã thay thế chuỗi đầu tiên tìm thấy.`);
+      } else {
+        showToast(`Không tìm thấy chuỗi '${searchQuery}'.`);
+      }
+    }
+  };
+
+  const handleDownloadTex = () => {
+    const blob = new Blob([displayContent], { type: 'text/plain;charset=utf-8' });
+    const element = document.createElement('a');
+    element.href = URL.createObjectURL(blob);
+    element.download = selectedPaper ? `${selectedPaper.name.replace('.pdf', '')}.tex` : 'document.tex';
+    document.body.appendChild(element);
+    element.click();
+    document.body.removeChild(element);
+    showToast('Đã tải xuống file LaTeX (.tex)');
+  };
+
+  const handleSyncContent = async () => {
+    if (!selectedPaper) return;
+    try {
+      await api.put(`/api/papers/${selectedPaper.id}`, { content: codeContent });
+      await syncClaimsFromCode(codeContent, project.id);
+      showToast('Đã đồng bộ hóa nội dung với máy chủ.');
+    } catch (err) {
+      console.error('Failed to sync', err);
+      showToast('Không thể đồng bộ nội dung.');
+    }
+  };
+
+  const handleMouseDown = (e) => {
+    e.preventDefault();
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+
+    const onMouseMove = (moveEvent) => {
+      const container = document.getElementById('editor-preview-container');
+      if (!container) return;
+
+      const containerRect = container.getBoundingClientRect();
+      const newWidthPx = moveEvent.clientX - containerRect.left;
+      let newWidthPct = (newWidthPx / containerRect.width) * 100;
+
+      if (newWidthPct < 15) newWidthPct = 15;
+      if (newWidthPct > 85) newWidthPct = 85;
+
+      setEditorWidth(newWidthPct);
+    };
+
+    const onMouseUp = () => {
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mouseup', onMouseUp);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    };
+
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', onMouseUp);
+  };
+
+  const handleLeftDividerMouseDown = (e) => {
+    e.preventDefault();
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+
+    const onMouseMove = (moveEvent) => {
+      let newWidth = moveEvent.clientX;
+      const parent = document.getElementById('workspace-container');
+      if (parent) {
+        const parentRect = parent.getBoundingClientRect();
+        newWidth = moveEvent.clientX - parentRect.left - 56;
+      }
+
+      if (newWidth < 160) newWidth = 160;
+      if (newWidth > 450) newWidth = 450;
+
+      setFileTreeWidth(newWidth);
+    };
+
+    const onMouseUp = () => {
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mouseup', onMouseUp);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    };
+
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', onMouseUp);
+  };
+
+  const handleRightDividerMouseDown = (e) => {
+    e.preventDefault();
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+
+    const onMouseMove = (moveEvent) => {
+      let newWidth = 380;
+      const parent = document.getElementById('workspace-container');
+      if (parent) {
+        const parentRect = parent.getBoundingClientRect();
+        newWidth = parentRect.right - moveEvent.clientX;
+      }
+
+      if (newWidth < 250) newWidth = 250;
+      if (newWidth > 600) newWidth = 600;
+
+      setRightDrawerWidth(newWidth);
+    };
+
+    const onMouseUp = () => {
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mouseup', onMouseUp);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    };
+
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', onMouseUp);
   };
 
   // Kích hoạt biên dịch lại PDF, tự động lưu tài liệu và ghi lịch sử phiên bản
@@ -982,12 +1232,163 @@ export default function Workspace() {
       const parsedElements = [];
 
       const parseText = (text) => {
-        const parts = text.split(/\hl\{([^}]+)\}/g);
-        return parts.map((part, index) => {
-          if (index % 2 === 1) {
-            return <span key={index} className="bg-yellow-200/80 px-1 rounded-sm border-b border-yellow-400">{part}</span>;
+        // Step 1: Remove LaTeX comments (lines starting with % but not \%)
+        let cleanText = text.split('\n')
+          .map(line => {
+            let percentIdx = -1;
+            for (let i = 0; i < line.length; i++) {
+              if (line[i] === '%' && (i === 0 || line[i - 1] !== '\\')) {
+                percentIdx = i;
+                break;
+              }
+            }
+            if (percentIdx !== -1) {
+              return line.substring(0, percentIdx);
+            }
+            return line;
+          })
+          .join('\n');
+
+        // Step 2: Replace standard symbol macros with their Unicode equivalent
+        const symbolMap = {
+          '\\\\alpha': 'α',
+          '\\\\beta': 'β',
+          '\\\\gamma': 'γ',
+          '\\\\delta': 'δ',
+          '\\\\epsilon': 'ε',
+          '\\\\theta': 'θ',
+          '\\\\lambda': 'λ',
+          '\\\\pi': 'π',
+          '\\\\omega': 'ω',
+          '\\\\sigma': 'σ',
+          '\\\\infty': '∞',
+          '\\\\pm': '±',
+          '\\\\approx': '≈',
+          '\\\\neq': '≠',
+          '\\\\le': '≤',
+          '\\\\ge': '≥'
+        };
+
+        for (const [macro, unicode] of Object.entries(symbolMap)) {
+          const regex = new RegExp(macro + '(?![a-zA-Z])', 'g');
+          cleanText = cleanText.replace(regex, unicode);
+        }
+
+        cleanText = cleanText.replace(/\\%/g, '%');
+
+        let tokens = [{ type: 'text', content: cleanText }];
+
+        const tokenizeMacro = (regex, type, extractData) => {
+          let newTokens = [];
+          for (const token of tokens) {
+            if (token.type !== 'text') {
+              newTokens.push(token);
+              continue;
+            }
+
+            let lastIndex = 0;
+            let match;
+            regex.lastIndex = 0;
+
+            while ((match = regex.exec(token.content)) !== null) {
+              if (match.index > lastIndex) {
+                newTokens.push({ type: 'text', content: token.content.substring(lastIndex, match.index) });
+              }
+
+              newTokens.push({
+                type,
+                ...extractData(match)
+              });
+
+              lastIndex = regex.lastIndex;
+            }
+
+            if (lastIndex < token.content.length) {
+              newTokens.push({ type: 'text', content: token.content.substring(lastIndex) });
+            }
           }
-          return part;
+          tokens = newTokens;
+        };
+
+        // Tokenize in order of complexity
+        tokenizeMacro(/\\href\{([^}]+)\}\{([^}]+)\}/g, 'href', (match) => ({
+          url: match[1],
+          label: match[2]
+        }));
+
+        tokenizeMacro(/\\textbf\{([^}]+)\}/g, 'bold', (match) => ({
+          content: match[1]
+        }));
+
+        tokenizeMacro(/\\italic\{([^}]+)\}/g, 'italic', (match) => ({
+          content: match[1]
+        }));
+        
+        tokenizeMacro(/\\textit\{([^}]+)\}/g, 'italic', (match) => ({
+          content: match[1]
+        }));
+
+        tokenizeMacro(/\\hl\{([^}]+)\}/g, 'hl', (match) => ({
+          content: match[1]
+        }));
+
+        tokenizeMacro(/(?:\\large\{([^}]+)\}|\{\\large\s+([^}]+)\})/g, 'large', (match) => ({
+          content: match[1] || match[2]
+        }));
+
+        tokenizeMacro(/(?:\\small\{([^}]+)\}|\{\\small\s+([^}]+)\})/g, 'small', (match) => ({
+          content: match[1] || match[2]
+        }));
+
+        tokenizeMacro(/\\subsection\{([^}]+)\}/g, 'subsection', (match) => ({
+          content: match[1]
+        }));
+
+        tokenizeMacro(/\\subsubsection\{([^}]+)\}/g, 'subsubsection', (match) => ({
+          content: match[1]
+        }));
+
+        tokenizeMacro(/\\cite\{([^}]+)\}/g, 'cite', (match) => ({
+          key: match[1]
+        }));
+
+        tokenizeMacro(/\\label\{([^}]+)\}/g, 'label', (match) => ({
+          key: match[1]
+        }));
+
+        tokenizeMacro(/\$([^$]+)\$/g, 'inline-math', (match) => ({
+          formula: match[1]
+        }));
+
+        return tokens.map((token, idx) => {
+          switch (token.type) {
+            case 'text':
+              return token.content;
+            case 'bold':
+              return <strong key={idx} className="font-bold text-slate-900">{parseText(token.content)}</strong>;
+            case 'italic':
+              return <em key={idx} className="italic text-slate-800">{parseText(token.content)}</em>;
+            case 'hl':
+              return <span key={idx} className="bg-yellow-200/80 px-1 rounded-sm border-b border-yellow-400">{parseText(token.content)}</span>;
+            case 'large':
+              return <span key={idx} className="text-lg leading-normal">{parseText(token.content)}</span>;
+            case 'small':
+              return <span key={idx} className="text-xs leading-normal">{parseText(token.content)}</span>;
+            case 'subsection':
+              return <h3 key={idx} className="font-bold text-base mt-4 mb-2 text-slate-800 font-serif">{parseText(token.content)}</h3>;
+            case 'subsubsection':
+              return <h4 key={idx} className="font-bold text-sm mt-3 mb-1 text-slate-800 font-serif">{parseText(token.content)}</h4>;
+            case 'cite':
+              return <span key={idx} className="text-xs font-semibold text-indigo-650 hover:underline cursor-pointer" title={`Citation: ${token.key}`}>[${token.key}]</span>;
+            case 'href':
+              return <a key={idx} href={token.url} target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:underline inline-flex items-center gap-0.5">{parseText(token.label)}⤎</a>;
+            case 'inline-math':
+              return <code key={idx} className="font-mono text-xs bg-slate-100 text-indigo-700 px-1 py-0.5 rounded font-serif italic">{token.formula}</code>;
+            case 'label':
+              return null;
+            default:
+              return null;
+          }
         });
       };
 
@@ -1007,9 +1408,83 @@ export default function Workspace() {
 
         const paragraphs = sectionContent.split('\n\n').filter(p => p.trim());
         paragraphs.forEach((p, pIndex) => {
+          const contentStr = p.trim();
+
+          // 1. Render equation block
+          if (contentStr.includes('\\begin{equation}')) {
+            const match = contentStr.match(/\\begin\{equation\}([\s\S]*?)\\end\{equation\}/);
+            if (match) {
+              const formula = match[1].trim();
+              parsedElements.push(
+                <div key={`eq-${i}-${pIndex}`} className="my-6 py-3 flex items-center justify-between px-8 bg-slate-50/50 border border-slate-100 rounded-lg font-serif italic text-base">
+                  <div className="flex-1 text-center font-mono">{formula}</div>
+                  <div className="text-slate-400 text-sm">({pIndex + 1})</div>
+                </div>
+              );
+              return;
+            }
+          }
+
+          // 2. Render figure block
+          if (contentStr.includes('\\begin{figure}')) {
+            const captionMatch = contentStr.match(/\\caption\{([^}]+)\}/);
+            const caption = captionMatch ? captionMatch[1] : 'Hình ảnh';
+            parsedElements.push(
+              <div key={`fig-${i}-${pIndex}`} className="my-6 p-4 border border-slate-200 rounded-xl bg-slate-50 flex flex-col items-center gap-3">
+                <div className="w-full max-w-sm aspect-video rounded-lg bg-slate-200 flex items-center justify-center text-slate-400 border border-slate-300">
+                  <svg className="w-10 h-10 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                </div>
+                <p className="text-xs text-slate-500 font-serif italic text-center">
+                  Hình 1: {caption}
+                </p>
+              </div>
+            );
+            return;
+          }
+
+          // 3. Render table block
+          if (contentStr.includes('\\begin{table}')) {
+            const captionMatch = contentStr.match(/\\caption\{([^}]+)\}/);
+            const caption = captionMatch ? captionMatch[1] : 'Bảng số liệu';
+            const rows = [];
+            const tabularMatch = contentStr.match(/\\begin\{tabular\}\{[^}]+\}([\s\S]*?)\\end\{tabular\}/);
+            if (tabularMatch) {
+              const rawRows = tabularMatch[1].split('\\\\');
+              rawRows.forEach((r) => {
+                const cleanRow = r.replace(/\\hline/g, '').trim();
+                if (cleanRow) {
+                  const cells = cleanRow.split('&').map(c => c.trim());
+                  rows.push(cells);
+                }
+              });
+            }
+            parsedElements.push(
+              <div key={`tab-${i}-${pIndex}`} className="my-6 flex flex-col items-center gap-2.5">
+                <p className="text-xs text-slate-500 font-serif italic text-center w-full">
+                  Bảng 1: {caption}
+                </p>
+                <div className="w-full overflow-hidden border border-slate-200 rounded-lg shadow-sm">
+                  <table className="w-full text-xs font-serif text-slate-700">
+                    <tbody>
+                      {rows.map((row, rIdx) => (
+                        <tr key={rIdx} className={rIdx === 0 ? 'bg-slate-50 border-b border-slate-200 font-bold text-slate-800' : 'border-b border-slate-100 last:border-0'}>
+                          {row.map((cell, cIdx) => (
+                            <td key={cIdx} className="px-4 py-2 border-r border-slate-100 last:border-0 text-center">{parseText(cell)}</td>
+                          ))}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            );
+            return;
+          }
+
+          // 4. Default render paragraph
           parsedElements.push(
             <p key={`p-${i}-${pIndex}`} className="text-[14px] mb-8 leading-[1.8] text-slate-700 font-serif text-justify">
-              {parseText(p.trim())}
+              {parseText(contentStr)}
             </p>
           );
         });
@@ -1064,7 +1539,12 @@ export default function Workspace() {
 
     const parseText = (text) => {
       let parsed = text;
-      parsed = parsed.replace(/\hl\{([^}]+)\}/g, '<span class="bg-yellow-200/50 px-1.5 rounded text-slate-800 border-b border-yellow-300">$1</span>');
+      parsed = parsed.replace(/\\hl\{([^}]+)\}/g, '<span class="bg-yellow-200/50 px-1.5 rounded text-slate-800 border-b border-yellow-300">$1</span>');
+      parsed = parsed.replace(/\\textbf\{([^}]+)\}/g, '<strong>$1</strong>');
+      parsed = parsed.replace(/\\textit\{([^}]+)\}/g, '<em>$1</em>');
+      parsed = parsed.replace(/\\href\{([^}]+)\}\{([^}]+)\}/g, '<a href="$1" class="text-indigo-600 underline" target="_blank">$2</a>');
+      parsed = parsed.replace(/(?:\\large\{([^}]+)\}|\{\\large\s+([^}]+)\})/g, '<span class="text-lg">$1$2</span>');
+      parsed = parsed.replace(/(?:\\small\{([^}]+)\}|\{\\small\s+([^}]+)\})/g, '<span class="text-xs">$1$2</span>');
       return parsed;
     };
 
@@ -1097,7 +1577,16 @@ export default function Workspace() {
       } else if (child.tagName === 'H2') {
         newLatex += `\\section{${child.innerText}}\n\n`;
       } else if (child.tagName === 'P') {
-        let text = child.innerHTML.replace(/<span[^>]*>(.*?)<\/span>/g, '\\hl{$1}').replace(/&nbsp;/g, ' ');
+        let text = child.innerHTML
+          .replace(/<strong>(.*?)<\/strong>/gi, '\\textbf{$1}')
+          .replace(/<b>(.*?)<\/b>/gi, '\\textbf{$1}')
+          .replace(/<em>(.*?)<\/em>/gi, '\\textit{$1}')
+          .replace(/<i>(.*?)<\/i>/gi, '\\textit{$1}')
+          .replace(/<span[^>]*class="bg-yellow[^"]*"[^>]*>(.*?)<\/span>/gi, '\\hl{$1}')
+          .replace(/<span[^>]*class="text-lg"[^>]*>(.*?)<\/span>/gi, '\\large{$1}')
+          .replace(/<span[^>]*class="text-xs"[^>]*>(.*?)<\/span>/gi, '\\small{$1}')
+          .replace(/<a\s+href="([^"]+)"[^>]*>(.*?)<\/a>/gi, '\\href{$1}{$2}')
+          .replace(/&nbsp;/g, ' ');
         text = text.replace(/<br\s*\/?>/gi, '\n');
         text = text.replace(/<[^>]*>?/gm, '');
         if (text.trim()) newLatex += `${text}\n\n`;
@@ -1197,14 +1686,7 @@ export default function Workspace() {
             </svg>
             {UI_TEXT[language].history}
           </button>
-          <button
-            onClick={() => setShowReviseModal(true)}
-            className="text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 px-4 py-1.5 rounded-lg flex items-center gap-1.5 shadow-md shadow-indigo-600/20 transition-all hover:shadow-indigo-600/40 transform hover:-translate-y-0.5">
-            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-            </svg>
-            {UI_TEXT[language].revise}
-          </button>
+
           <button
             onClick={() => navigate('/student/projects')}
             className="text-xs font-semibold text-slate-600 border border-slate-200 px-3 py-1.5 rounded-lg hover:bg-slate-100 transition-all ml-1"
@@ -1228,7 +1710,7 @@ export default function Workspace() {
       </header>
 
       {/* Main Workspace Area */}
-      <div className="flex-1 flex overflow-hidden">
+      <div id="workspace-container" className="flex-1 flex overflow-hidden">
         {/* Activity Bar (Dark sidebar like VS Code / Overleaf) */}
         <div className="w-14 bg-slate-950 flex flex-col justify-between py-4 shrink-0 z-20 border-r border-slate-900 shadow-[2px_0_8px_rgba(0,0,0,0.5)]">
           <div className="w-full flex flex-col items-center gap-6">
@@ -1300,7 +1782,8 @@ export default function Workspace() {
 
         {/* Panel 1: File Tree & Outline (Left Sidebar) */}
         <aside
-          className={`bg-slate-50 border-r border-slate-200 flex flex-col shrink-0 transition-all duration-300 relative z-10 ${isFileTreeOpen ? 'w-64' : 'w-0 overflow-hidden border-r-0'}`}
+          style={{ width: isFileTreeOpen ? `${fileTreeWidth}px` : '0px' }}
+          className={`bg-slate-50 border-r border-slate-200 flex flex-col shrink-0 relative z-10 ${!isFileTreeOpen ? 'overflow-hidden border-r-0' : ''}`}
         >
           {/* File Tree Header */}
           <div className="px-4 py-3 border-b border-slate-200 flex justify-between items-center bg-slate-100">
@@ -1347,7 +1830,7 @@ export default function Workspace() {
                           key={p.id}
                           onClick={async () => {
                             setSelectedPaper(p);
-                            setCodeContent(p.extractedText || p.content || '');
+                            loadCode(p.extractedText || p.content || '');
                             localStorage.setItem('current_selected_paper_id', p.id);
                             await syncClaimsFromCode(p.extractedText || p.content || '', projectId);
                           }}
@@ -1443,13 +1926,25 @@ export default function Workspace() {
             </div>
           </div>
         </aside>
+        {isFileTreeOpen && (
+          <div
+            onMouseDown={handleLeftDividerMouseDown}
+            className="w-1 hover:w-1.5 bg-slate-200 hover:bg-slate-400 cursor-col-resize self-stretch transition-all shrink-0 z-30 relative group flex items-center justify-center border-r border-slate-200/80"
+            title="Kéo để thay đổi kích thước"
+          >
+            <div className="h-6 w-0.5 bg-slate-400 group-hover:bg-slate-500 rounded"></div>
+          </div>
+        )}
 
 
         {/* Center Panes: Editor & Preview */}
-        <div className="flex-1 flex overflow-hidden bg-slate-200/50 p-2 gap-2">
+        <div id="editor-preview-container" className="flex-1 flex overflow-hidden bg-slate-200/50 p-2 gap-2">
           
           {/* Panel 2: LaTeX Editor */}
-          <div className="flex-1 bg-white rounded-lg shadow-sm border border-slate-200 flex flex-col overflow-hidden">
+          <div
+            style={{ width: `${editorWidth}%`, flexGrow: 0, flexShrink: 0 }}
+            className="bg-white rounded-lg shadow-sm border border-slate-200 flex flex-col overflow-hidden"
+          >
             {/* Editor Header */}
             <div className="h-10 border-b border-slate-100 flex items-center justify-between px-3 bg-white shadow-sm shrink-0 z-10">
               <div className="flex items-center gap-2 truncate">
@@ -1511,18 +2006,281 @@ export default function Workspace() {
               </div>
             )}
 
-            {/* LaTeX Text Formatting Toolbar */}
-            <div className="h-9 bg-slate-50 border-b border-slate-100 flex items-center gap-1 px-3 shrink-0 select-none">
-              <button onClick={() => insertLatexTag('bold')} className="w-7 h-7 flex items-center justify-center hover:bg-slate-200 rounded text-slate-600 font-extrabold font-serif transition-colors" title="In đậm (Bold)"><span className="text-xs">B</span></button>
-              <button onClick={() => insertLatexTag('italic')} className="w-7 h-7 flex items-center justify-center hover:bg-slate-200 rounded text-slate-600 italic font-serif transition-colors" title="In nghiêng (Italic)"><span className="text-xs">I</span></button>
-              <button onClick={() => insertLatexTag('hl')} className="w-7 h-7 flex items-center justify-center hover:bg-slate-200 rounded text-amber-500 font-bold transition-colors" title="Bôi nổi bật (\hl)"><span className="text-[10px] bg-yellow-200 px-0.5 rounded text-amber-900 border border-yellow-300">hl</span></button>
-              
-              <div className="w-px h-4 bg-slate-200 mx-1"></div>
-              
-              <button onClick={() => insertLatexTag('list')} className="w-7 h-7 flex items-center justify-center hover:bg-slate-200 rounded text-slate-600 transition-colors" title="Danh sách liệt kê (itemize)">
-                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M4 6h16M4 12h16M4 18h16" /></svg>
-              </button>
-              <button onClick={() => insertLatexTag('equation')} className="w-7 h-7 flex items-center justify-center hover:bg-slate-200 rounded text-slate-600 font-serif text-xs transition-colors" title="Công thức toán (equation)">∑</button>
+            {/* LaTeX Text Formatting & Advanced Utility Toolbar */}
+            <div className="bg-slate-50 border-b border-slate-200 flex flex-col shrink-0 select-none">
+              {/* Row 1: LaTeX formatting & inserts */}
+              <div className="h-9 flex items-center justify-between px-3 border-b border-slate-100 gap-1">
+                <div className="flex-1 flex items-center gap-1 overflow-x-auto min-w-0 pr-2 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+                  {/* Undo */}
+                  <button
+                    onClick={handleUndo}
+                    disabled={historyIndex <= 0}
+                    className="w-7 h-7 flex items-center justify-center hover:bg-slate-200 rounded text-slate-600 disabled:text-slate-300 disabled:hover:bg-transparent transition-colors cursor-pointer"
+                    title="Hoàn tác (Undo)"
+                  >
+                    <span className="text-xs">↶</span>
+                  </button>
+                  {/* Redo */}
+                  <button
+                    onClick={handleRedo}
+                    disabled={historyIndex >= codeHistory.length - 1}
+                    className="w-7 h-7 flex items-center justify-center hover:bg-slate-200 rounded text-slate-600 disabled:text-slate-300 disabled:hover:bg-transparent transition-colors cursor-pointer"
+                    title="Làm lại (Redo)"
+                  >
+                    <span className="text-xs">↷</span>
+                  </button>
+
+                  <div className="w-px h-4 bg-slate-200 mx-1"></div>
+
+                  {/* TT Heading size menu */}
+                  <div className="relative">
+                    <button
+                      onClick={() => {
+                        setShowTextSizeMenu(!showTextSizeMenu);
+                        setShowSymbolMenu(false);
+                      }}
+                      className="h-7 px-1.5 flex items-center gap-1 hover:bg-slate-200 rounded text-slate-700 font-extrabold text-[11px] transition-colors cursor-pointer"
+                      title="Tiêu đề & Cỡ chữ (Heading / Font size)"
+                    >
+                      <span>TT</span>
+                      <span className="text-[7px]">▼</span>
+                    </button>
+                    {showTextSizeMenu && (
+                      <div className="absolute left-0 mt-1 bg-white border border-slate-200 rounded-lg shadow-xl py-1 w-32 z-50 animate-in fade-in slide-in-from-top-1 duration-100">
+                        <button onClick={() => { insertLatexTag('section'); setShowTextSizeMenu(false); }} className="w-full text-left px-3 py-1.5 hover:bg-slate-100 text-xs font-bold text-slate-700 cursor-pointer">Section</button>
+                        <button onClick={() => { insertLatexTag('subsection'); setShowTextSizeMenu(false); }} className="w-full text-left px-3 py-1.5 hover:bg-slate-100 text-xs font-semibold text-slate-700 cursor-pointer">Sub-section</button>
+                        <button onClick={() => { insertLatexTag('subsubsection'); setShowTextSizeMenu(false); }} className="w-full text-left px-3 py-1.5 hover:bg-slate-100 text-xs text-slate-700 cursor-pointer">Sub-sub-section</button>
+                        <hr className="border-slate-150 my-1" />
+                        <button onClick={() => { insertLatexTag('large'); setShowTextSizeMenu(false); }} className="w-full text-left px-3 py-1.5 hover:bg-slate-100 text-xs text-slate-700 cursor-pointer">Large font</button>
+                        <button onClick={() => { insertLatexTag('small'); setShowTextSizeMenu(false); }} className="w-full text-left px-3 py-1.5 hover:bg-slate-100 text-[10px] text-slate-700 cursor-pointer">Small font</button>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Bold B */}
+                  <button
+                    onClick={() => insertLatexTag('bold')}
+                    className="w-7 h-7 flex items-center justify-center hover:bg-slate-200 rounded text-slate-700 font-extrabold font-serif transition-colors cursor-pointer"
+                    title="In đậm (Bold)"
+                  >
+                    B
+                  </button>
+                  {/* Italic I */}
+                  <button
+                    onClick={() => insertLatexTag('italic')}
+                    className="w-7 h-7 flex items-center justify-center hover:bg-slate-200 rounded text-slate-700 italic font-serif transition-colors cursor-pointer"
+                    title="In nghiêng (Italic)"
+                  >
+                    I
+                  </button>
+
+                  {/* Math */}
+                  <button
+                    onClick={() => insertLatexTag('inline-math')}
+                    className="w-7 h-7 flex items-center justify-center hover:bg-slate-200 rounded text-slate-700 font-serif text-xs transition-colors cursor-pointer"
+                    title="Chèn công thức toán ($inline$)"
+                  >
+                    $
+                  </button>
+                  <button
+                    onClick={() => insertLatexTag('equation')}
+                    className="w-7 h-7 flex items-center justify-center hover:bg-slate-200 rounded text-slate-700 font-serif text-xs transition-colors cursor-pointer"
+                    title="Khối công thức toán (equation)"
+                  >
+                    ∑
+                  </button>
+
+                  {/* Omega Symbol Picker */}
+                  <div className="relative">
+                    <button
+                      onClick={() => {
+                        setShowSymbolMenu(!showSymbolMenu);
+                        setShowTextSizeMenu(false);
+                      }}
+                      className="w-7 h-7 flex items-center justify-center hover:bg-slate-200 rounded text-slate-700 font-bold transition-colors cursor-pointer"
+                      title="Ký tự Hy Lạp (Ω Symbols)"
+                    >
+                      Ω
+                    </button>
+                    {showSymbolMenu && (
+                      <div className="absolute left-0 mt-1 bg-white border border-slate-200 rounded-lg shadow-xl p-2 w-48 z-50 animate-in fade-in slide-in-from-top-1 duration-100">
+                        <div className="grid grid-cols-4 gap-1">
+                          {[
+                            { code: '\\alpha', char: 'α' },
+                            { code: '\\beta', char: 'β' },
+                            { code: '\\gamma', char: 'γ' },
+                            { code: '\\delta', char: 'δ' },
+                            { code: '\\epsilon', char: 'ε' },
+                            { code: '\\theta', char: 'θ' },
+                            { code: '\\lambda', char: 'λ' },
+                            { code: '\\pi', char: 'π' },
+                            { code: '\\omega', char: 'ω' },
+                            { code: '\\sigma', char: 'σ' },
+                            { code: '\\infty', char: '∞' },
+                            { code: '\\pm', char: '±' },
+                            { code: '\\approx', char: '≈' },
+                            { code: '\\neq', char: '≠' },
+                            { code: '\\le', char: '≤' },
+                            { code: '\\ge', char: '≥' }
+                          ].map(sym => (
+                            <button
+                              key={sym.code}
+                              onClick={() => {
+                                insertSymbol(sym.code);
+                                setShowSymbolMenu(false);
+                              }}
+                              className="h-7 hover:bg-slate-100 rounded text-xs font-semibold text-slate-700 flex items-center justify-center cursor-pointer hover:text-indigo-600"
+                              title={sym.code}
+                            >
+                              {sym.char}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="w-px h-4 bg-slate-200 mx-1"></div>
+
+                  {/* Link */}
+                  <button
+                    onClick={() => insertLatexTag('link')}
+                    className="w-7 h-7 flex items-center justify-center hover:bg-slate-200 rounded text-slate-700 transition-colors cursor-pointer"
+                    title="Chèn liên kết (Hyperlink)"
+                  >
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" /></svg>
+                  </button>
+
+                  {/* Comment */}
+                  <button
+                    onClick={() => insertLatexTag('comment')}
+                    className="w-7 h-7 flex items-center justify-center hover:bg-slate-200 rounded text-slate-700 transition-colors cursor-pointer"
+                    title="Chèn bình luận (Comment)"
+                  >
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>
+                  </button>
+
+                  {/* Label */}
+                  <button
+                    onClick={() => insertLatexTag('label')}
+                    className="w-7 h-7 flex items-center justify-center hover:bg-slate-200 rounded text-slate-700 transition-colors cursor-pointer"
+                    title="Chèn Nhãn (Label)"
+                  >
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 7h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                  </button>
+
+                  {/* Citation */}
+                  <button
+                    onClick={() => insertLatexTag('cite')}
+                    className="w-7 h-7 flex items-center justify-center hover:bg-slate-200 rounded text-slate-700 transition-colors cursor-pointer"
+                    title="Chèn Trích dẫn (Citation)"
+                  >
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" /></svg>
+                  </button>
+
+                  {/* Figure */}
+                  <button
+                    onClick={() => insertLatexTag('figure')}
+                    className="w-7 h-7 flex items-center justify-center hover:bg-slate-200 rounded text-slate-700 transition-colors cursor-pointer"
+                    title="Chèn khung Hình ảnh (Figure)"
+                  >
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                  </button>
+
+                  {/* Table */}
+                  <button
+                    onClick={() => insertLatexTag('table')}
+                    className="w-7 h-7 flex items-center justify-center hover:bg-slate-200 rounded text-slate-700 transition-colors cursor-pointer"
+                    title="Chèn Bảng biểu (Table)"
+                  >
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
+                  </button>
+                </div>
+
+                <div className="flex items-center gap-1.5">
+                  {/* Search Kính lúp */}
+                  <button
+                    onClick={() => setShowSearchPanel(!showSearchPanel)}
+                    className={`w-7 h-7 flex items-center justify-center rounded transition-colors ${showSearchPanel ? 'bg-indigo-100 text-indigo-700' : 'hover:bg-slate-200 text-slate-700'}`}
+                    title="Tìm kiếm & Thay thế (Find & Replace)"
+                  >
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                  </button>
+                </div>
+              </div>
+
+              {/* Row 2: Basic core utilities (Download, Sync/Refresh, Settings) */}
+              <div className="h-8 flex items-center justify-between px-3 bg-slate-50/70 border-t border-slate-100 gap-1">
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] text-slate-400 font-extrabold tracking-widest uppercase">TIỆN ÍCH HỆ THỐNG</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  {/* Export / Download */}
+                  <button
+                    onClick={handleDownloadTex}
+                    className="w-7 h-7 flex items-center justify-center hover:bg-slate-200 rounded text-slate-600 transition-colors cursor-pointer"
+                    title="Tải về file LaTeX (.tex)"
+                  >
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                  </button>
+                  {/* Sync / Refresh */}
+                  <button
+                    onClick={handleSyncContent}
+                    className="w-7 h-7 flex items-center justify-center hover:bg-slate-200 rounded text-slate-600 transition-colors cursor-pointer"
+                    title="Đồng bộ hóa / Lưu lên server"
+                  >
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                  </button>
+                  {/* Settings */}
+                  <button
+                    onClick={() => showToast('Cài đặt biên tập LaTeX đã mở.')}
+                    className="w-7 h-7 flex items-center justify-center hover:bg-slate-200 rounded text-slate-600 transition-colors cursor-pointer"
+                    title="Cấu hình soạn thảo"
+                  >
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                  </button>
+                </div>
+              </div>
+
+              {/* Row 3 (Optional / Dynamic): Find & Replace panel */}
+              {showSearchPanel && (
+                <div className="bg-indigo-50/55 px-4 py-2 border-t border-slate-200 flex flex-wrap items-center gap-3 animate-in slide-in-from-top-1 duration-150">
+                  <div className="flex items-center gap-1.5">
+                    <label className="text-[10px] font-bold text-slate-500 uppercase">Tìm:</label>
+                    <input
+                      type="text"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      placeholder="Từ khóa..."
+                      className="bg-white border border-slate-200 rounded px-2 py-1 text-xs text-slate-700 w-36 outline-none focus:border-indigo-400"
+                    />
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <label className="text-[10px] font-bold text-slate-500 uppercase">Thay thế:</label>
+                    <input
+                      type="text"
+                      value={replaceQuery}
+                      onChange={(e) => setReplaceQuery(e.target.value)}
+                      placeholder="Chuỗi mới..."
+                      className="bg-white border border-slate-200 rounded px-2 py-1 text-xs text-slate-700 w-36 outline-none focus:border-indigo-400"
+                    />
+                  </div>
+                  <div className="flex gap-1.5">
+                    <button
+                      onClick={() => handleFindReplace(false)}
+                      className="bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 font-semibold px-2.5 py-1 rounded text-xs transition-colors cursor-pointer"
+                    >
+                      Thay thế cái đầu
+                    </button>
+                    <button
+                      onClick={() => handleFindReplace(true)}
+                      className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-2.5 py-1 rounded text-xs transition-colors shadow-sm cursor-pointer"
+                    >
+                      Thay thế tất cả
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Code / Visual Mode Container */}
@@ -1565,7 +2323,7 @@ export default function Workspace() {
                   <textarea
                     id="latex-textarea"
                     value={displayContent}
-                    onChange={(e) => setCodeContent(e.target.value)}
+                    onChange={(e) => updateCode(e.target.value)}
                     onScroll={handleScroll}
                     spellCheck={false}
                     readOnly={previewingVersion !== null}
@@ -1617,14 +2375,26 @@ export default function Workspace() {
                 readOnly={previewingVersion !== null}
                 onHtmlChange={(target) => {
                   const newCode = parseHtmlToLatex(target);
-                  setCodeContent(newCode);
+                  updateCode(newCode);
                 }}
               />
             )}
           </div>
 
+          {/* Divider Handle between Editor and PDF Preview */}
+          <div
+            onMouseDown={handleMouseDown}
+            className="w-2 cursor-col-resize self-stretch shrink-0 z-30 relative group flex items-center justify-center -mx-2"
+            title="Kéo để thay đổi kích thước"
+          >
+            <div className="w-1 h-12 rounded bg-slate-300 group-hover:bg-slate-400 transition-colors"></div>
+          </div>
+
           {/* Panel 3: PDF Preview */}
-          <div className="flex-1 bg-white rounded-lg shadow-sm border border-slate-200 flex flex-col overflow-hidden relative">
+          <div
+            style={{ width: `${100 - editorWidth}%`, flexGrow: 0, flexShrink: 0 }}
+            className="bg-white rounded-lg shadow-sm border border-slate-200 flex flex-col overflow-hidden relative"
+          >
             {/* Collapse / Expand right drawer floating button tab */}
             {!isDrawerOpen && (
               <button
@@ -1712,10 +2482,18 @@ export default function Workspace() {
             </div>
           </div>
         </div>
+        {isDrawerOpen && (
+          <div
+            onMouseDown={handleRightDividerMouseDown}
+            className="w-1 hover:w-1.5 bg-slate-200 hover:bg-slate-400 cursor-col-resize self-stretch transition-all shrink-0 z-30 relative group flex items-center justify-center border-l border-slate-200/80"
+            title="Kéo để thay đổi kích thước"
+          >
+            <div className="h-6 w-0.5 bg-slate-400 group-hover:bg-slate-500 rounded"></div>
+          </div>
+        )}
         <aside
-          className={`bg-white border-l border-slate-200 flex flex-col shrink-0 transition-all duration-300 relative z-10 shadow-[-4px_0_15px_-3px_rgba(0,0,0,0.05)] ${
-            isDrawerOpen ? 'w-[380px]' : 'w-0 overflow-hidden border-l-0'
-          }`}
+          style={{ width: isDrawerOpen ? `${rightDrawerWidth}px` : '0px' }}
+          className={`bg-white border-l border-slate-200 flex flex-col shrink-0 relative z-10 shadow-[-4px_0_15px_-3px_rgba(0,0,0,0.05)] ${!isDrawerOpen ? 'overflow-hidden border-l-0' : ''}`}
         >
           {/* Tabs */}
           <div className="flex border-b border-slate-200 bg-white relative shrink-0">
@@ -2353,39 +3131,7 @@ export default function Workspace() {
     )
   }
 
-  {/* REVISE MODAL */ }
-  {
-    showReviseModal && (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm animate-in fade-in duration-200">
-        <div className="bg-white rounded-xl shadow-2xl w-full max-w-md p-6 transform transition-all">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-lg font-bold text-slate-800">Tự động sửa tài liệu</h2>
-            <button onClick={() => setShowReviseModal(false)} className="text-slate-400 hover:text-slate-600 transition-colors">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
-            </button>
-          </div>
-          <p className="text-sm text-slate-600 mb-6">Chọn các phần bạn muốn trợ lý AI hỗ trợ sửa đổi dựa trên nhận xét của giảng viên và các luận điểm đối chiếu.</p>
 
-          <div className="space-y-3 mb-6">
-            <label className="flex items-center gap-3 p-3 border border-slate-200 rounded-lg cursor-pointer hover:bg-slate-50 transition-colors">
-              <input type="checkbox" className="w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500" defaultChecked />
-              <span className="text-sm font-medium text-slate-700">Sửa đổi các lập luận chưa khớp (Phần 3)</span>
-            </label>
-          </div>
-
-          <div className="flex justify-end gap-3">
-            <button onClick={() => setShowReviseModal(false)} className="px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100 rounded-lg transition-colors">Hủy</button>
-            <button onClick={() => {
-              setShowReviseModal(false);
-              alert("Yêu cầu sửa đổi đã gửi! AI đang tiến hành xử lý.");
-            }} className="px-4 py-2 text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg shadow-sm shadow-indigo-200 transition-colors">
-              Start Revision
-            </button>
-          </div>
-        </div>
-      </div>
-    )
-  }
 
   {
     showSubmitReviewModal && (
@@ -2512,17 +3258,7 @@ export default function Workspace() {
             >
               Đóng
             </button>
-            {aiReviewResult && (
-              <button
-                onClick={() => {
-                  setShowAiReviewModal(false);
-                  setShowReviseModal(true);
-                }}
-                className="px-4 py-2 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg shadow-sm shadow-indigo-200 transition-colors cursor-pointer"
-              >
-                Tự động sửa lỗi (Auto Revise)
-              </button>
-            )}
+
           </div>
         </div>
       </div>

@@ -369,6 +369,40 @@ export default function mockAdapter(config) {
       });
     }
 
+    if (method === 'POST' && pathWithoutQuery === '/api/auth/fpt-google-login') {
+      const users = getDB('users', []);
+      const { email } = body;
+      
+      if (!email || !email.endsWith('@fpt.edu.vn')) {
+        return respond400('Chỉ chấp nhận tài khoản Google có đuôi @fpt.edu.vn');
+      }
+      
+      let user = users.find(u => u.email === email);
+      if (!user) {
+        let initialRole = 'STUDENT';
+        if (email.toLowerCase().includes('instructor')) {
+          initialRole = 'INSTRUCTOR';
+        }
+        
+        user = {
+          id: users.length > 0 ? Math.max(...users.map(u => u.id)) + 1 : 1,
+          email,
+          password: 'fpt_google_oauth_bypass',
+          role: initialRole,
+          firstName: email.split('@')[0],
+          lastName: '',
+          age: 21
+        };
+        users.push(user);
+        setDB('users', users);
+      }
+      
+      return respond200({
+        token: `mock-token-${user.id}`,
+        role: user.role
+      });
+    }
+
     // 2. Thông tin người dùng
     if (method === 'GET' && pathWithoutQuery === '/api/users/me') {
       const currentUser = getCurrentUserFromHeaders();

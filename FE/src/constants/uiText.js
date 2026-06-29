@@ -18,7 +18,6 @@ export const UI_TEXT = {
     returnedWithFeedback: "Đã trả về với phản hồi",
     feedbacks: "phản hồi",
     history: "Lịch sử",
-    revise: "Chỉnh sửa",
     
     // Left Sidebar tree folder labels
     paperDrafts: "Bản thảo",
@@ -127,7 +126,6 @@ export const UI_TEXT = {
     aiStructureDesc: "Đề xuất giải quyết:",
     aiStructureBullet1: "Truy cập tab Luận điểm ở thanh bên phải, đối chiếu xem luận điểm nào chưa có nhãn chứng cứ xanh lá (Độ tin cậy).",
     aiStructureBullet2: "Tải lên thêm tài liệu nghiên cứu thực nghiệm để liên kết cơ sở dữ liệu.",
-    autoFixBtn: "Tự động sửa lỗi (Auto Revise)",
     closeBtn: "Đóng"
   },
   en: {
@@ -149,7 +147,6 @@ export const UI_TEXT = {
     returnedWithFeedback: "Returned with Feedback",
     feedbacks: "feedbacks",
     history: "History",
-    revise: "Revise",
     
     // Left Sidebar tree folder labels
     paperDrafts: "Drafts",
@@ -258,7 +255,6 @@ export const UI_TEXT = {
     aiStructureDesc: "Suggestions:",
     aiStructureBullet1: "Go to the Claims tab on the right sidebar and look for claims that do not have a green confidence label.",
     aiStructureBullet2: "Upload more empirical source files to bridge the citation gap.",
-    autoFixBtn: "Auto Revise",
     closeBtn: "Close"
   }
 };
