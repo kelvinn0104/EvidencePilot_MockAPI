@@ -1356,13 +1356,33 @@ export default function Workspace() {
       .trim();
   };
 
+  const getBalancedCommandContent = (text, commandName) => {
+    const index = text.indexOf(`\\${commandName}{`);
+    if (index === -1) return null;
+    let openBraces = 1;
+    let i = index + commandName.length + 2;
+    const start = i;
+    while (i < text.length && openBraces > 0) {
+      if (text[i] === '{') {
+        openBraces++;
+      } else if (text[i] === '}') {
+        openBraces--;
+      }
+      i++;
+    }
+    if (openBraces === 0) {
+      return text.substring(start, i - 1);
+    }
+    return null;
+  };
+
   const renderPreview = () => {
     // Tách tài liệu thành các trang dựa trên lệnh \newpage hoặc \clearpage
     const pages = displayContent.split(/\\newpage|\\clearpage/);
 
     return pages.map((pageContent, pageIndex) => {
-      const titleMatch = pageContent.match(/\\title\{([^}]+)\}/);
-      const authorMatch = pageContent.match(/\\author\{([^}]+)\}/);
+      const titleContent = getBalancedCommandContent(pageContent, 'title');
+      const authorContent = getBalancedCommandContent(pageContent, 'author');
       const abstractContent = extractAbstractContent(pageContent);
 
       let body = pageContent;
@@ -1386,7 +1406,7 @@ export default function Workspace() {
           .map(line => {
             let percentIdx = -1;
             for (let i = 0; i < line.length; i++) {
-              if (line[i] === '%' && (i === 0 || line[i - 1] !== '\\')) {
+              if (line[i] === '%' && (i === 0 || (line[i - 1] !== '\\' && !/\d/.test(line[i - 1])))) {
                 percentIdx = i;
                 break;
               }
@@ -1501,6 +1521,10 @@ export default function Workspace() {
           key: match[1]
         }));
 
+        tokenizeMacro(/\\ref\{([^}]+)\}/g, 'ref', (match) => ({
+          key: match[1]
+        }));
+
         tokenizeMacro(/\\label\{([^}]+)\}/g, 'label', (match) => ({
           key: match[1]
         }));
@@ -1528,7 +1552,9 @@ export default function Workspace() {
             case 'subsubsection':
               return <h4 key={idx} className="font-bold text-sm mt-3 mb-1 text-slate-800 font-serif">{parseText(token.content)}</h4>;
             case 'cite':
-              return <span key={idx} className="text-xs font-semibold text-indigo-650 hover:underline cursor-pointer" title={`Citation: ${token.key}`}>[${token.key}]</span>;
+              return <span key={idx} className="text-xs font-semibold text-indigo-650 hover:underline cursor-pointer" title={`Citation: ${token.key}`}>[{token.key}]</span>;
+            case 'ref':
+              return <span key={idx} className="font-semibold text-slate-700" title={`Reference: ${token.key}`}>{token.key}</span>;
             case 'href':
               return <a key={idx} href={token.url} target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:underline inline-flex items-center gap-0.5">{parseText(token.label)}⤎</a>;
             case 'inline-math':
@@ -1600,7 +1626,11 @@ export default function Workspace() {
             if (tabularMatch) {
               const rawRows = tabularMatch[1].split('\\\\');
               rawRows.forEach((r) => {
-                const cleanRow = r.replace(/\\hline/g, '').trim();
+                let cleanRow = r.replace(/\\hline/g, '')
+                                .replace(/\\toprule/g, '')
+                                .replace(/\\midrule/g, '')
+                                .replace(/\\bottomrule/g, '')
+                                .trim();
                 if (cleanRow) {
                   const cells = cleanRow.split('&').map(c => c.trim());
                   rows.push(cells);
@@ -1630,7 +1660,23 @@ export default function Workspace() {
             return;
           }
 
-          // 4. Default render paragraph
+          // 4. Render itemize block
+          if (contentStr.includes('\\begin{itemize}')) {
+            const itemsMatch = contentStr.match(/\\begin\{itemize\}([\s\S]*?)\\end\{itemize\}/);
+            if (itemsMatch) {
+              const rawItems = itemsMatch[1].split('\\item').slice(1);
+              parsedElements.push(
+                <ul key={`list-${i}-${pIndex}`} className="list-disc pl-6 my-4 space-y-1.5 font-serif text-[14px] text-slate-700">
+                  {rawItems.map((item, itemIdx) => (
+                    <li key={itemIdx}>{parseText(item.trim())}</li>
+                  ))}
+                </ul>
+              );
+              return;
+            }
+          }
+
+          // 5. Default render paragraph
           parsedElements.push(
             <p key={`p-${i}-${pIndex}`} className="text-[14px] mb-8 leading-[1.8] text-slate-700 font-serif text-justify">
               {parseText(contentStr)}
@@ -1642,13 +1688,13 @@ export default function Workspace() {
       return (
         <div key={pageIndex} className="bg-white shadow-2xl rounded-sm w-[720px] min-h-[1018px] p-16 select-text transition-all duration-300 relative text-left mb-6 flex flex-col justify-between">
           <div>
-            {titleMatch && (
+            {titleContent && (
               <h1 className="text-2xl font-serif font-bold text-center mb-3 leading-snug text-slate-900">
-                {titleMatch[1].split('\\\\').map((line, i) => <React.Fragment key={i}>{line}<br /></React.Fragment>)}
+                {titleContent.split('\\\\').map((line, i) => <React.Fragment key={i}>{line}<br /></React.Fragment>)}
               </h1>
             )}
-            {authorMatch && (
-              <p className="text-center text-sm mb-6 text-slate-600 font-serif italic">{cleanAuthorDisplay(authorMatch[1])}</p>
+            {authorContent && (
+              <p className="text-center text-sm mb-6 text-slate-600 font-serif italic">{cleanAuthorDisplay(authorContent)}</p>
             )}
             {abstractContent && (
               <div className="mb-8 px-6 py-4 bg-slate-50/50 border border-slate-100 rounded-xl font-serif text-[13px] leading-relaxed text-justify text-slate-650">
@@ -1670,8 +1716,8 @@ export default function Workspace() {
   };
 
   const generateRichTextHtml = (latexCode) => {
-    const titleMatch = latexCode.match(/\\title\{([^}]+)\}/);
-    const authorMatch = latexCode.match(/\\author\{([^}]+)\}/);
+    const titleContent = getBalancedCommandContent(latexCode, 'title');
+    const authorContent = getBalancedCommandContent(latexCode, 'author');
     const abstractContent = extractAbstractContent(latexCode);
 
     let body = latexCode;
@@ -1689,11 +1735,11 @@ export default function Workspace() {
     const sections = body.split(/\\section\{([^}]+)\}/);
     let html = '';
 
-    if (titleMatch) {
-      html += `<h1 class="text-3xl font-bold mb-2 text-slate-900">${titleMatch[1].replace(/\\\\/g, ' ')}</h1>`;
+    if (titleContent) {
+      html += `<h1 class="text-3xl font-bold mb-2 text-slate-900">${titleContent.replace(/\\\\/g, ' ')}</h1>`;
     }
-    if (authorMatch) {
-      html += `<p class="text-sm text-slate-500 mb-6 italic">By ${cleanAuthorDisplay(authorMatch[1])}</p>`;
+    if (authorContent) {
+      html += `<p class="text-sm text-slate-500 mb-6 italic">By ${cleanAuthorDisplay(authorContent)}</p>`;
     }
     if (abstractContent) {
       html += `<div class="mb-6 p-4 bg-slate-50 border border-slate-100 rounded-xl font-serif text-[13px] leading-relaxed text-slate-600"><strong>Abstract—</strong>${abstractContent}</div>`;
@@ -1705,6 +1751,8 @@ export default function Workspace() {
       parsed = parsed.replace(/\\textbf\{([^}]+)\}/g, '<strong>$1</strong>');
       parsed = parsed.replace(/\\textit\{([^}]+)\}/g, '<em>$1</em>');
       parsed = parsed.replace(/\\href\{([^}]+)\}\{([^}]+)\}/g, '<a href="$1" class="text-indigo-600 underline" target="_blank">$2</a>');
+      parsed = parsed.replace(/\\cite\{([^}]+)\}/g, '<span class="text-xs font-semibold text-indigo-650 hover:underline cursor-pointer">[$1]</span>');
+      parsed = parsed.replace(/\\ref\{([^}]+)\}/g, '<span class="font-semibold text-slate-700">$1</span>');
       parsed = parsed.replace(/(?:\\large\{([^}]+)\}|\{\\large\s+([^}]+)\})/g, '<span class="text-lg">$1$2</span>');
       parsed = parsed.replace(/(?:\\small\{([^}]+)\}|\{\\small\s+([^}]+)\})/g, '<span class="text-xs">$1$2</span>');
       return parsed;
@@ -1722,7 +1770,57 @@ export default function Workspace() {
 
       const paragraphs = sectionContent.split('\n\n').filter(p => p.trim());
       paragraphs.forEach(p => {
-        html += `<p class="mb-6 text-[15px] text-slate-700">${parseText(p.trim())}</p>`;
+        const pTrimmed = p.trim();
+
+        // 1. Table support
+        if (pTrimmed.includes('\\begin{table}')) {
+          const captionMatch = pTrimmed.match(/\\caption\{([^}]+)\}/);
+          const caption = captionMatch ? captionMatch[1] : 'Bảng số liệu';
+          const rows = [];
+          const tabularMatch = pTrimmed.match(/\\begin\{tabular\}\{[^}]+\}([\s\S]*?)\\end\{tabular\}/);
+          if (tabularMatch) {
+            const rawRows = tabularMatch[1].split('\\\\');
+            rawRows.forEach((r) => {
+              let cleanRow = r.replace(/\\hline/g, '')
+                              .replace(/\\toprule/g, '')
+                              .replace(/\\midrule/g, '')
+                              .replace(/\\bottomrule/g, '')
+                              .trim();
+              if (cleanRow) {
+                const cells = cleanRow.split('&').map(c => c.trim());
+                rows.push(cells);
+              }
+            });
+          }
+          html += `<div class="my-6 flex flex-col items-center gap-2.5">
+            <p class="text-xs text-slate-500 font-serif italic text-center w-full">Bảng 1: ${caption}</p>
+            <div class="w-full overflow-hidden border border-slate-200 rounded-lg shadow-sm bg-white">
+              <table class="w-full text-xs font-serif text-slate-700">
+                <tbody>
+                  ${rows.map((row, rIdx) => `
+                    <tr class="${rIdx === 0 ? 'bg-slate-50 border-b border-slate-200 font-bold text-slate-800' : 'border-b border-slate-100 last:border-0'}">
+                      ${row.map(cell => `<td class="px-4 py-2 border-r border-slate-100 last:border-0 text-center">${parseText(cell)}</td>`).join('')}
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
+            </div>
+          </div>`;
+          return;
+        }
+
+        // 2. Itemize support
+        if (pTrimmed.includes('\\begin{itemize}')) {
+          const itemsMatch = pTrimmed.match(/\\begin\{itemize\}([\s\S]*?)\\end\{itemize\}/);
+          if (itemsMatch) {
+            const rawItems = itemsMatch[1].split('\\item').slice(1);
+            html += `<ul class="list-disc pl-6 my-4 space-y-1.5 text-[15px] text-slate-700">${rawItems.map(item => `<li>${parseText(item.trim())}</li>`).join('')}</ul>`;
+            return;
+          }
+        }
+
+        // 3. Paragraph default
+        html += `<p class="mb-6 text-[15px] text-slate-700">${parseText(pTrimmed)}</p>`;
       });
     }
 
