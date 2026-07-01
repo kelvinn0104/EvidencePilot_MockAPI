@@ -14,7 +14,6 @@ export default function Profile() {
   
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
-  const [age, setAge] = useState("");
   const [email, setEmail] = useState(""); 
   const [message, setMessage] = useState({ type: "", text: "" });
 
@@ -22,7 +21,7 @@ export default function Profile() {
   const pathname = window.location.pathname;
   const fallbackRole = pathname.includes('/admin') ? 'ADMIN' : (pathname.includes('/instructor') ? 'INSTRUCTOR' : 'STUDENT');
 
-  // --- 2. ĐỌC DỮ LIỆU TỪ API (CHỈ CHẠY 1 LẦN KHI MOUNT) ---
+  // --- 2. ĐỌC DỮ LIỆU TỪ API ---
   const fetchUserProfile = async () => {
     setLoading(true);
     try {
@@ -32,10 +31,8 @@ export default function Profile() {
         setUser(data);
         setFirstName(data.firstName || "");
         setLastName(data.lastName || "");
-        setAge(data.age || "");
         
-        // 🌟 GIẢI PHÁP SỬA LỖI: Kiểm tra xem có email mới đã lưu tạm ở LocalStorage không
-        // Nếu có, lấy nó luôn thay vì sử dụng dữ liệu cũ của Mock API gửi về
+        // Kiểm tra xem có email mới đã lưu tạm ở LocalStorage không
         const savedEmail = localStorage.getItem(`override_email_${data.id}`);
         setEmail(savedEmail || data.email || ""); 
       }
@@ -62,11 +59,10 @@ export default function Profile() {
     setSubmitting(true);
     setMessage({ type: "", text: "" });
 
-    // Đóng gói dữ liệu nhập từ form
+    // Đóng gói dữ liệu nhập từ form (Đã bỏ thuộc tính age)
     const formPayload = {
       firstName: firstName.trim(),
       lastName: lastName.trim(),
-      age: parseInt(age) || null,
       email: email.trim()
     };
 
@@ -74,7 +70,6 @@ export default function Profile() {
       const response = await api.put('/api/users/me', formPayload);
       const backendData = response.data || {};
       
-      // 🌟 GIẢI PHÁP SỬA LỖI: Lưu đè email mới vào LocalStorage tương ứng với ID của User hiện tại
       const userId = user?.id || backendData.id;
       if (userId) {
         localStorage.setItem(`override_email_${userId}`, formPayload.email);
@@ -85,7 +80,6 @@ export default function Profile() {
         ...backendData,
         firstName: formPayload.firstName,
         lastName: formPayload.lastName,
-        age: formPayload.age,
         email: formPayload.email 
       });
 
@@ -230,11 +224,14 @@ export default function Profile() {
                   />
                 </div>
 
+                {/* THAY Ô AGE THÀNH ASSIGNED SCOPE ROLE (DẠNG READ-ONLY ĐỂ BẢO MẬT PHÂN QUYỀN) */}
                 <div className="space-y-1.5">
-                  <label className="text-gray-500 font-black uppercase tracking-wide text-[10px]">Age</label>
+                  <label className="text-gray-400 font-black uppercase tracking-wide text-[10px]">Assigned Scope Role</label>
                   <input 
-                    type="number" value={age} onChange={(e) => setAge(e.target.value)}
-                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl font-medium text-gray-800 focus:outline-none focus:ring-2 focus:ring-[#1e3a8a]"
+                    type="text" 
+                    value={currentRole} 
+                    readOnly 
+                    className="w-full px-4 py-3 bg-gray-100 border border-gray-200 rounded-xl font-mono text-[11px] font-bold text-gray-500 cursor-not-allowed selection:bg-transparent"
                   />
                 </div>
 
@@ -251,15 +248,6 @@ export default function Profile() {
                   </button>
                 </div>
               </form>
-            </div>
-
-            <div className="bg-white rounded-3xl border border-gray-200 shadow-sm p-8 space-y-4">
-              <div className="grid grid-cols-1 gap-4 text-xs">
-                <div className="bg-gray-50/70 border border-gray-100 p-3 rounded-xl">
-                  <span className="block text-gray-400 font-black uppercase text-[9px] tracking-wide">Assigned Scope Role</span>
-                  <span className="font-mono text-gray-600 block mt-1 text-[11px] font-bold">{currentRole}</span>
-                </div>
-              </div>
             </div>
           </div>
 
