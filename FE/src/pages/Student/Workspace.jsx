@@ -2995,7 +2995,7 @@ export default function Workspace() {
                   </h3>
                   {(() => {
                     const filteredCollections = sharedCollections
-                      .filter(col => !col.paperId || String(col.paperId) === String(selectedPaper?.id))
+                      .filter(col => !col.paperId || !selectedPaper?.id || String(selectedPaper.id).startsWith(String(col.paperId)))
                       .filter(col => {
                         if (!docSearchQuery) return true;
                         const query = docSearchQuery.toLowerCase();
