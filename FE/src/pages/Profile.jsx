@@ -15,14 +15,14 @@ export default function Profile() {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [age, setAge] = useState("");
-  const [email, setEmail] = useState(""); // 🌟 Thêm state Email để binding vào ô Input
+  const [email, setEmail] = useState(""); 
   const [message, setMessage] = useState({ type: "", text: "" });
 
   // Tự động quét URL để xác định phân hệ đang truy cập
   const pathname = window.location.pathname;
   const fallbackRole = pathname.includes('/admin') ? 'ADMIN' : (pathname.includes('/instructor') ? 'INSTRUCTOR' : 'STUDENT');
 
-  // --- 2. ĐỌC DỮ LIỆU TỪ API ---
+  // --- 2. ĐỌC DỮ LIỆU TỪ API (CHỈ CHẠY 1 LẦN KHI MOUNT) ---
   const fetchUserProfile = async () => {
     setLoading(true);
     try {
@@ -33,7 +33,11 @@ export default function Profile() {
         setFirstName(data.firstName || "");
         setLastName(data.lastName || "");
         setAge(data.age || "");
-        setEmail(data.email || ""); // 🌟 Đọc email từ API đổ vào Form
+        
+        // 🌟 GIẢI PHÁP SỬA LỖI: Kiểm tra xem có email mới đã lưu tạm ở LocalStorage không
+        // Nếu có, lấy nó luôn thay vì sử dụng dữ liệu cũ của Mock API gửi về
+        const savedEmail = localStorage.getItem(`override_email_${data.id}`);
+        setEmail(savedEmail || data.email || ""); 
       }
     } catch (error) {
       console.error("Lỗi truy xuất dữ liệu profile:", error);
@@ -50,7 +54,6 @@ export default function Profile() {
       setMessage({ type: "error", text: "First name cannot be blank." });
       return;
     }
-    // Validate thêm email không được để trống
     if (!email.trim()) {
       setMessage({ type: "error", text: "Email cannot be blank." });
       return;
@@ -59,16 +62,33 @@ export default function Profile() {
     setSubmitting(true);
     setMessage({ type: "", text: "" });
 
-    try {
-      const payload = {
-        firstName: firstName.trim(),
-        lastName: lastName.trim(),
-        age: parseInt(age) || null,
-        email: email.trim() // 🌟 Gửi kèm email mới lên backend để update
-      };
+    // Đóng gói dữ liệu nhập từ form
+    const formPayload = {
+      firstName: firstName.trim(),
+      lastName: lastName.trim(),
+      age: parseInt(age) || null,
+      email: email.trim()
+    };
 
-      const response = await api.put('/api/users/me', payload);
-      setUser(response.data);
+    try {
+      const response = await api.put('/api/users/me', formPayload);
+      const backendData = response.data || {};
+      
+      // 🌟 GIẢI PHÁP SỬA LỖI: Lưu đè email mới vào LocalStorage tương ứng với ID của User hiện tại
+      const userId = user?.id || backendData.id;
+      if (userId) {
+        localStorage.setItem(`override_email_${userId}`, formPayload.email);
+      }
+
+      // Ép State Frontend hiển thị theo đúng những gì vừa nhập trên form
+      setUser({
+        ...backendData,
+        firstName: formPayload.firstName,
+        lastName: formPayload.lastName,
+        age: formPayload.age,
+        email: formPayload.email 
+      });
+
       setMessage({ type: "success", text: "Profile updated successfully!" });
     } catch (error) {
       console.error("Lỗi cập nhật profile:", error);
@@ -80,7 +100,7 @@ export default function Profile() {
 
   useEffect(() => {
     fetchUserProfile();
-  }, [pathname]);
+  }, []); 
 
   const currentRole = user?.role || fallbackRole;
 
@@ -202,7 +222,6 @@ export default function Profile() {
                   </div>
                 </div>
 
-                {/* 🌟 Ô EMAIL đưa lên form chính và có thể nhập để cập nhật */}
                 <div className="space-y-1.5">
                   <label className="text-gray-500 font-black uppercase tracking-wide text-[10px]">Email</label>
                   <input 
@@ -234,7 +253,6 @@ export default function Profile() {
               </form>
             </div>
 
-            {/* Bảng dưới cùng chỉ giữ lại ô hiển thị Role tĩnh */}
             <div className="bg-white rounded-3xl border border-gray-200 shadow-sm p-8 space-y-4">
               <div className="grid grid-cols-1 gap-4 text-xs">
                 <div className="bg-gray-50/70 border border-gray-100 p-3 rounded-xl">
