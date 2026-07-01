@@ -228,9 +228,9 @@ export default function CollectionList() {
               </thead>
               <tbody className="divide-y divide-gray-100 text-xs text-gray-700">
                 {loading ? (
-                  <tr><td colSpan="5" className="px-6 py-8 text-center text-gray-400 font-medium animate-pulse">Synchronizing metadata data stream...</td></tr>
+                  <tr><td colSpan="6" className="px-6 py-8 text-center text-gray-400 font-medium animate-pulse">Synchronizing metadata data stream...</td></tr>
                 ) : (!Array.isArray(collections) || collections.length === 0) ? (
-                  <tr><td colSpan="5" className="px-6 py-8 text-center text-gray-400 font-medium py-12">No active collection matrix mapped to this project module layout.</td></tr>
+                  <tr><td colSpan="6" className="px-6 py-8 text-center text-gray-400 font-medium py-12">No active collection matrix mapped to this project module layout.</td></tr>
                 ) : (
                   Array.isArray(collections) && collections.map((col) => {
                     const attachedPdf = documents.find(doc => doc.collectionId === col.id);
