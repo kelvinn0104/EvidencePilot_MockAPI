@@ -380,6 +380,22 @@ export default function Login() {
                 </div>
                 <span className="text-[9px] font-bold text-orange-600 bg-orange-50 px-1.5 py-0.5 rounded">INSTRUCTOR</span>
               </button>
+
+              {/* Profile 3: admin.test@fpt.edu.vn */}
+              <button
+                type="button"
+                onClick={() => handleFptGoogleLogin('admin.test@fpt.edu.vn')}
+                className="w-full flex items-center gap-3 p-2.5 rounded-xl hover:bg-slate-50 border border-transparent hover:border-slate-100 transition-all text-left group cursor-pointer"
+              >
+                <div className="w-8 h-8 rounded-full bg-rose-600 text-white flex items-center justify-center font-bold text-sm shadow-sm">
+                  A
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-slate-800 truncate">FPT Admin Portal</p>
+                  <p className="text-xs text-slate-500 truncate">admin.test@fpt.edu.vn</p>
+                </div>
+                <span className="text-[9px] font-bold text-red-600 bg-red-50 px-1.5 py-0.5 rounded">ADMIN</span>
+              </button>
             </div>
 
             <div className="flex justify-between items-center text-[10px] text-slate-400 px-1">

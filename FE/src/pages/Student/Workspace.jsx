@@ -109,6 +109,8 @@ export default function Workspace() {
   const [editorWidth, setEditorWidth] = useState(50); // percentage
   const [fileTreeWidth, setFileTreeWidth] = useState(256); // pixels
   const [rightDrawerWidth, setRightDrawerWidth] = useState(380); // pixels
+  const [sharedCollections, setSharedCollections] = useState([]);
+  const [sharedDocuments, setSharedDocuments] = useState([]);
 
   const updateCode = (newVal) => {
     setCodeContent(newVal);
@@ -445,6 +447,18 @@ export default function Workspace() {
         setGraphData(graphRes.data);
       } catch (e) { console.error('Failed to fetch graph data', e); }
 
+      // Tải bộ sưu tập tiêu chuẩn chứng cứ của giảng viên (sharedCollections)
+      try {
+        const colRes = await api.get(`/api/projects/${projId}/collections`);
+        setSharedCollections(colRes.data || []);
+      } catch (e) { console.error('Failed to fetch shared collections', e); }
+
+      // Tải tài liệu tham khảo đính kèm (sharedDocuments)
+      try {
+        const docsRes = await api.get('/api/collections/documents');
+        setSharedDocuments(docsRes.data || []);
+      } catch (e) { console.error('Failed to fetch shared documents', e); }
+
     } catch (err) {
       console.error('Error loading project details:', err);
     }
@@ -548,6 +562,9 @@ export default function Workspace() {
     formData.append('file', file);
     formData.append('projectId', project.id);
     formData.append('uploadedBy', currentUser.id); // Bắt buộc theo API của BE
+    if (selectedPaper) {
+      formData.append('paperId', selectedPaper.id);
+    }
 
     try {
       await api.post('/api/sources/upload', formData, {
@@ -2591,45 +2608,49 @@ export default function Workspace() {
                   <h3 className="text-[11px] font-bold text-slate-400 tracking-widest mb-3 uppercase flex items-center gap-2">
                     <div className="h-px bg-slate-200 flex-1"></div> {UI_TEXT[language].sharedResources} <div className="h-px bg-slate-200 flex-1"></div>
                   </h3>
-                  <div className="bg-white border border-slate-200 rounded-xl shadow-sm mb-3 hover:border-indigo-300 hover:shadow-md transition-all overflow-hidden group">
-                    <div className="p-3.5 border-b border-slate-100 flex justify-between items-start bg-slate-50/50">
-                      <div>
-                        <h4 className="font-bold text-sm text-slate-800 group-hover:text-indigo-700 transition-colors">Agile Risk Evidence Pack</h4>
-                        <p className="text-xs text-slate-500 mt-1 line-clamp-2 leading-relaxed">Instructor-curated sources for communication, sprint feedback, and agile risk claims.</p>
+                  {(() => {
+                    const filteredCollections = sharedCollections.filter(col => !col.paperId || String(col.paperId) === String(selectedPaper?.id));
+                    return filteredCollections.length === 0 ? (
+                      <div className="text-xs text-slate-400 italic text-center py-4 bg-slate-50 rounded-xl border border-dashed border-slate-200 w-full">
+                        Chưa có tài liệu chia sẻ từ giảng viên cho bản thảo này.
                       </div>
-                      <span className="bg-indigo-100 text-indigo-700 text-xs font-bold px-2 py-1 rounded-md shadow-sm">4</span>
-                    </div>
-                    <div className="p-0">
-                      <div onClick={() => setViewerFile({ fileUrl: import.meta.env.VITE_API_BASE_URL + '/api/sources/shared-1/view', fileName: 'instructor-agile-risk-framework.pdf' })} className="px-4 py-2.5 border-b border-slate-100 bg-white hover:bg-slate-50 transition-colors cursor-pointer">
-                        <p className="text-sm font-semibold text-slate-700 flex items-center gap-2"><svg className="w-3.5 h-3.5 text-red-500" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clipRule="evenodd" /></svg>instructor-agile-risk-framework.pdf</p>
-                        <p className="text-[11px] text-slate-400 mt-1 pl-5">Risk control improves when agile teams define escalation paths...</p>
-                      </div>
-                      <div onClick={() => setViewerFile({ fileUrl: import.meta.env.VITE_API_BASE_URL + '/api/sources/shared-2/view', fileName: 'feedback-loop-benchmark.docx' })} className="px-4 py-2.5 border-b border-slate-100 bg-white hover:bg-slate-50 transition-colors cursor-pointer">
-                        <p className="text-sm font-semibold text-slate-700 flex items-center gap-2"><svg className="w-3.5 h-3.5 text-blue-500" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clipRule="evenodd" /></svg>feedback-loop-benchmark.docx</p>
-                        <p className="text-[11px] text-slate-400 mt-1 pl-5">Teams with structured sprint feedback loops identify blockers...</p>
-                      </div>
-                      
-                      {isSharedSourcesExpanded && (
-                        <>
-                          <div onClick={() => setViewerFile({ fileUrl: import.meta.env.VITE_API_BASE_URL + '/api/sources/shared-3/view', fileName: 'scrum-guide-2020.pdf' })} className="px-4 py-2.5 border-b border-slate-100 bg-white hover:bg-slate-50 transition-colors cursor-pointer animate-in slide-in-from-top-2 duration-200">
-                            <p className="text-sm font-semibold text-slate-700 flex items-center gap-2"><svg className="w-3.5 h-3.5 text-red-500" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clipRule="evenodd" /></svg>scrum-guide-2020.pdf</p>
-                            <p className="text-[11px] text-slate-400 mt-1 pl-5">The official Scrum Guide containing rules of the Scrum framework...</p>
+                    ) : (
+                      filteredCollections.map(col => {
+                        const colDocs = sharedDocuments.filter(doc => doc.collectionId === col.id);
+                        return (
+                          <div key={col.id} className="bg-white border border-slate-200 rounded-xl shadow-sm mb-3 hover:border-indigo-300 hover:shadow-md transition-all overflow-hidden group">
+                            <div className="p-3.5 border-b border-slate-100 flex justify-between items-start bg-slate-50/50">
+                              <div>
+                                <h4 className="font-bold text-sm text-slate-800 group-hover:text-indigo-700 transition-colors">{col.title}</h4>
+                                {col.description && <p className="text-xs text-slate-500 mt-1 line-clamp-2 leading-relaxed">{col.description}</p>}
+                              </div>
+                              <span className="bg-indigo-100 text-indigo-700 text-xs font-bold px-2 py-1 rounded-md shadow-sm">{colDocs.length}</span>
+                            </div>
+                            <div className="p-0">
+                              {colDocs.map(doc => (
+                                <div 
+                                  key={doc.id}
+                                  onClick={() => setViewerFile({ 
+                                    fileUrl: doc.fileUrl || '/api/sources/shared-1/view', 
+                                    fileName: doc.name 
+                                  })} 
+                                  className="px-4 py-2.5 border-b border-slate-100 bg-white hover:bg-slate-50 transition-colors cursor-pointer"
+                                >
+                                  <p className="text-sm font-semibold text-slate-700 flex items-center gap-2">
+                                    <svg className="w-3.5 h-3.5 text-red-500" fill="currentColor" viewBox="0 0 20 20">
+                                      <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clipRule="evenodd" />
+                                    </svg>
+                                    {doc.name}
+                                  </p>
+                                  {doc.description && <p className="text-[11px] text-slate-400 mt-1 pl-5">{doc.description}</p>}
+                                </div>
+                              ))}
+                            </div>
                           </div>
-                          <div onClick={() => setViewerFile({ fileUrl: import.meta.env.VITE_API_BASE_URL + '/api/sources/shared-4/view', fileName: 'agile-audit-checklist.pdf' })} className="px-4 py-2.5 border-b border-slate-100 bg-white hover:bg-slate-50 transition-colors cursor-pointer animate-in slide-in-from-top-2 duration-200">
-                            <p className="text-sm font-semibold text-slate-700 flex items-center gap-2"><svg className="w-3.5 h-3.5 text-red-500" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clipRule="evenodd" /></svg>agile-audit-checklist.pdf</p>
-                            <p className="text-[11px] text-slate-400 mt-1 pl-5">Key verification checklist for compliance and agile practices auditing...</p>
-                          </div>
-                        </>
-                      )}
-
-                      <div 
-                        onClick={() => setIsSharedSourcesExpanded(!isSharedSourcesExpanded)} 
-                        className="px-4 py-2 bg-slate-50/50 hover:bg-slate-100 text-[11px] text-indigo-600 font-bold text-center uppercase tracking-wider cursor-pointer transition-colors select-none"
-                      >
-                        {isSharedSourcesExpanded ? UI_TEXT[language].showLess : UI_TEXT[language].showMore}
-                      </div>
-                    </div>
-                  </div>
+                        );
+                      })
+                    );
+                  })()}
                 </div>
 
                 <div>
@@ -2637,19 +2658,22 @@ export default function Workspace() {
                     <div className="h-px bg-slate-200 flex-1"></div> {UI_TEXT[language].uploadedSources} <div className="h-px bg-slate-200 flex-1"></div>
                   </h3>
                   <div className="flex flex-col gap-3">
-                    {sources.length === 0 ? (
-                      <div className="text-sm text-slate-500 italic text-center p-4">{UI_TEXT[language].noUploadedSources}</div>
-                    ) : (
-                      sources.map(src => (
-                        <div key={src.id} onClick={() => setViewerFile({
-                          fileUrl: src.fileUrl || (import.meta.env.VITE_API_BASE_URL + `/api/sources/${src.id}/view`),
-                          fileName: src.originalFilename || src.filename || src.name || "document.pdf"
-                        })} className="bg-white border border-slate-200 rounded-xl p-3.5 hover:shadow-md hover:border-indigo-300 transition-all cursor-pointer transform hover:-translate-y-0.5">
-                          <p className="text-sm font-bold text-slate-800 flex items-center gap-2"><svg className="w-4 h-4 text-red-500" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clipRule="evenodd" /></svg>{src.originalFilename || src.filename || src.name || "document.pdf"}</p>
-                          <p className="text-xs text-slate-500 mt-1.5 line-clamp-2 leading-relaxed">Source file uploaded to this project.</p>
-                        </div>
-                      ))
-                    )}
+                    {(() => {
+                      const filteredSources = sources.filter(src => !src.paperId || String(src.paperId) === String(selectedPaper?.id));
+                      return filteredSources.length === 0 ? (
+                        <div className="text-sm text-slate-500 italic text-center p-4 w-full">{UI_TEXT[language].noUploadedSources}</div>
+                      ) : (
+                        filteredSources.map(src => (
+                          <div key={src.id} onClick={() => setViewerFile({
+                            fileUrl: src.fileUrl || (import.meta.env.VITE_API_BASE_URL + `/api/sources/${src.id}/view`),
+                            fileName: src.originalFilename || src.filename || src.name || "document.pdf"
+                          })} className="bg-white border border-slate-200 rounded-xl p-3.5 hover:shadow-md hover:border-indigo-300 transition-all cursor-pointer transform hover:-translate-y-0.5">
+                            <p className="text-sm font-bold text-slate-800 flex items-center gap-2"><svg className="w-4 h-4 text-red-500" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clipRule="evenodd" /></svg>{src.originalFilename || src.filename || src.name || "document.pdf"}</p>
+                            <p className="text-xs text-slate-500 mt-1.5 line-clamp-2 leading-relaxed">Source file uploaded to this project.</p>
+                          </div>
+                        ))
+                      );
+                    })()}
                   </div>
                 </div>
               </div>
@@ -2837,7 +2861,7 @@ export default function Workspace() {
                         </div>
                         <span className={`text-[9px] px-2 py-0.5 rounded font-black border uppercase ${fb.status === 'PENDING' ? 'bg-amber-50 text-amber-700 border-amber-200' : fb.status === 'RETURNED' ? 'bg-rose-50 text-rose-700 border-rose-200' : fb.status === 'REVIEWED' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-rose-50 text-rose-700'}`}>{fb.status}</span>
                       </div>
-                      <div className="p-3 text-xs leading-relaxed text-slate-700">
+                      <div className="p-3 text-xs leading-relaxed text-slate-700 space-y-2">
                         {fb.status === 'PENDING' && (
                           <p className="text-amber-600 font-medium italic">Bản thảo {fb.paperName || 'bài viết'} đã được gửi đi. Đang chờ giảng viên kiểm tra và cho nhận xét.</p>
                         )}
@@ -2849,6 +2873,14 @@ export default function Workspace() {
                         )}
                         {fb.status === 'REJECTED' && (
                           <p className="text-red-600 font-medium">Yêu cầu duyệt của bạn bị từ chối.</p>
+                        )}
+                        {fb.content && (
+                          <div className="mt-2.5 pt-2.5 border-t border-slate-100 bg-slate-50 p-2.5 rounded-lg text-slate-650">
+                            <span className="font-bold text-slate-800 flex items-center gap-1 mb-1">
+                              💬 Nhận xét chi tiết:
+                            </span>
+                            <p className="whitespace-pre-wrap font-mono text-[11px] leading-relaxed text-slate-600">{fb.content}</p>
+                          </div>
                         )}
                       </div>
                     </div>

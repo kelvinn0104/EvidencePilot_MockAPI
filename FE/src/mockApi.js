@@ -1,3 +1,5 @@
+import { initialMockData } from './mockData.js';
+
 export default function mockAdapter(config) {
   return new Promise((resolve, reject) => {
     const method = config.method.toUpperCase();
@@ -46,17 +48,18 @@ export default function mockAdapter(config) {
     const initDB = () => {
       
 
-      if (!localStorage.getItem('mock_db_initialized_en_v7')) {
+      if (!localStorage.getItem('mock_db_initialized_en_v9')) {
         setDB('users', [
           { id: 1, email: 'student@evidencepilot.edu', password: '123', role: 'STUDENT', firstName: 'Nguyễn', lastName: 'Văn A', age: 21 },
-          { id: 2, email: 'instructor@evidencepilot.edu', password: '123', role: 'INSTRUCTOR', firstName: 'Dr. Phạm', lastName: 'Thị B', age: 45 }
+          { id: 2, email: 'instructor.test@fpt.edu.vn', password: '123', role: 'INSTRUCTOR', firstName: 'Dr. Phạm', lastName: 'Thị B', age: 45 }
         ]);
         setDB('projects', [
           { id: 'proj-1', title: 'Nghiên cứu Agile & DevOps', name: 'Nghiên cứu Agile & DevOps', description: 'Dự án phân tích tính hiệu quả của Agile/Scrum kết hợp DevOps trong các doanh nghiệp khởi nghiệp.', ownerId: 1, status: 'ACTIVE', createdAt: new Date().toISOString() }
         ]);
         setDB('sources', [
-          { id: 'src-1', projectId: 'proj-1', filename: 'agile-performance-report.pdf', name: 'agile-performance-report.pdf', originalFilename: 'agile-performance-report.pdf', type: 'application/pdf', size: 1024500, uploadedAt: new Date().toISOString() },
-          { id: 'src-2', projectId: 'proj-1', filename: 'devops-adoption-metrics.pdf', name: 'devops-adoption-metrics.pdf', originalFilename: 'devops-adoption-metrics.pdf', type: 'application/pdf', size: 852000, uploadedAt: new Date().toISOString() }
+          { id: 'src-1', projectId: 'proj-1', paperId: 'paper-2', filename: 'agile-performance-report.pdf', name: 'agile-performance-report.pdf', originalFilename: 'agile-performance-report.pdf', type: 'application/pdf', size: 1024500, uploadedAt: new Date().toISOString() },
+          { id: 'src-2', projectId: 'proj-1', paperId: 'paper-2', filename: 'devops-adoption-metrics.pdf', name: 'devops-adoption-metrics.pdf', originalFilename: 'devops-adoption-metrics.pdf', type: 'application/pdf', size: 852000, uploadedAt: new Date().toISOString() },
+          { id: 'src-3', projectId: 'proj-1', paperId: 'paper-1', filename: 'react-rendering-perf.pdf', name: 'react-rendering-perf.pdf', originalFilename: 'react-rendering-perf.pdf', type: 'application/pdf', size: 450000, uploadedAt: new Date().toISOString() }
         ]);
         setDB('papers', [
           {
@@ -229,7 +232,33 @@ export default function mockAdapter(config) {
           status: 'PENDING',
           requestedAt: initialRequest.requestedAt
         }]);
-        localStorage.setItem('mock_db_initialized_en_v7', 'true');
+        localStorage.setItem('mock_db_initialized_en_v9', 'true');
+      }
+
+      if (!localStorage.getItem('mock_db_initialized_collections_v4')) {
+        console.log("[Mock API DB Seed] Initializing collections database v4...");
+        localStorage.removeItem('mock_db_collections');
+        localStorage.removeItem('mock_db_referenceDocuments');
+        setDB('collections', initialMockData.collections);
+        setDB('referenceDocuments', initialMockData.referenceDocuments);
+        setDB('systemHealth', initialMockData.systemHealth);
+        setDB('auditLogs', initialMockData.auditLogs);
+        
+        const users = getDB('users', []);
+        if (!users.some(u => u.role === 'ADMIN')) {
+          users.push({
+            id: 3,
+            email: 'admin@evidencepilot.edu',
+            password: '123',
+            role: 'ADMIN',
+            firstName: 'System',
+            lastName: 'Administrator',
+            age: 30
+          });
+          setDB('users', users);
+        }
+        
+        localStorage.setItem('mock_db_initialized_collections_v4', 'true');
       }
     };
     initDB();
@@ -353,7 +382,66 @@ export default function mockAdapter(config) {
       };
       users.push(newUser);
       setDB('users', users);
-      return respond201({ message: 'Đăng ký tài khoản thành công!' });
+
+      // Tạo mã xác thực OTP 5 số
+      const otp = String(Math.floor(10000 + Math.random() * 90000));
+      const otps = getDB('otps', {});
+      otps[email] = { otp, expiresAt: Date.now() + 5 * 60 * 1000 };
+      setDB('otps', otps);
+
+      return respond201({ 
+        message: 'Đăng ký tài khoản thành công! Mã xác thực 5 số đã được gửi.', 
+        otp,
+        email 
+      });
+    }
+
+    if (method === 'POST' && pathWithoutQuery === '/api/auth/verify-otp') {
+      const { email, otp } = body;
+      const otps = getDB('otps', {});
+      const userOtpRecord = otps[email];
+      
+      if (!userOtpRecord) {
+        return respond400('Không tìm thấy mã xác thực cho email này.');
+      }
+      
+      if (Date.now() > userOtpRecord.expiresAt) {
+        return respond400('Mã xác thực đã hết hạn (quá 5 phút). Hãy gửi lại mã.');
+      }
+      
+      if (String(userOtpRecord.otp) !== String(otp)) {
+        return respond400('Mã xác thực không chính xác.');
+      }
+      
+      // Xác nhận thành công, trả về token đăng nhập
+      const users = getDB('users', []);
+      const user = users.find(u => u.email === email);
+      if (!user) return respond404('Không tìm thấy tài khoản người dùng.');
+      
+      delete otps[email];
+      setDB('otps', otps);
+      
+      return respond200({
+        token: `mock-token-${user.id}`,
+        role: user.role
+      });
+    }
+
+    if (method === 'POST' && pathWithoutQuery === '/api/auth/resend-otp') {
+      const { email } = body;
+      const users = getDB('users', []);
+      const user = users.find(u => u.email === email);
+      if (!user) return respond404('Không tìm thấy tài khoản người dùng.');
+
+      const otp = String(Math.floor(10000 + Math.random() * 90000));
+      const otps = getDB('otps', {});
+      otps[email] = { otp, expiresAt: Date.now() + 5 * 60 * 1000 };
+      setDB('otps', otps);
+
+      return respond200({
+        message: 'Mã xác thực mới đã được gửi.',
+        otp
+      });
     }
 
     if (method === 'POST' && pathWithoutQuery === '/api/auth/login') {
@@ -382,6 +470,8 @@ export default function mockAdapter(config) {
         let initialRole = 'STUDENT';
         if (email.toLowerCase().includes('instructor')) {
           initialRole = 'INSTRUCTOR';
+        } else if (email.toLowerCase().includes('admin')) {
+          initialRole = 'ADMIN';
         }
         
         user = {
@@ -520,15 +610,31 @@ export default function mockAdapter(config) {
       return respond201(newSource);
     }
 
-    // 4. Dự án của Sinh viên
+    // 4. Dự án của Sinh viên & Giảng viên
     if (method === 'GET' && pathWithoutQuery === '/api/projects') {
-      const projects = getDB('projects', []);
+      let projects = getDB('projects', []);
       const currentUser = getCurrentUserFromHeaders();
       if (!currentUser) return respond401();
       
       if (currentUser.role === 'STUDENT') {
-        return respond200(projects.filter(p => p.ownerId === currentUser.id));
+        projects = projects.filter(p => p.ownerId === currentUser.id);
       }
+
+      // Hỗ trợ tìm kiếm theo từ khóa (q)
+      if (queryParams.q) {
+        const query = queryParams.q.toLowerCase();
+        projects = projects.filter(p => 
+          (p.title && p.title.toLowerCase().includes(query)) ||
+          (p.name && p.name.toLowerCase().includes(query)) ||
+          (p.description && p.description.toLowerCase().includes(query))
+        );
+      }
+
+      // Hỗ trợ lọc theo trạng thái (status)
+      if (queryParams.status) {
+        projects = projects.filter(p => p.status === queryParams.status);
+      }
+      
       return respond200(projects);
     }
 
@@ -560,6 +666,15 @@ export default function mockAdapter(config) {
           ...s,
           originalFilename: s.originalFilename || s.filename || s.name || 'document.pdf'
         }));
+        return respond200(filtered);
+      }
+      
+      if (parts[4] === 'collections') {
+        const collections = getDB('collections', []);
+        const filtered = collections.filter(c => c.projectId === projId);
+        console.log("[Mock API Debug] GET collections for project via projects route:", projId);
+        console.log("All collections in DB:", collections);
+        console.log("Filtered collections:", filtered);
         return respond200(filtered);
       }
       
@@ -634,6 +749,7 @@ export default function mockAdapter(config) {
       let projectId = queryParams.projectId || '';
       let filename = 'document.pdf';
       let size = 1200000;
+      let paperId = queryParams.paperId || '';
 
       if (body instanceof FormData) {
         const file = body.get('file');
@@ -644,14 +760,19 @@ export default function mockAdapter(config) {
         if (body.get('projectId')) {
           projectId = body.get('projectId');
         }
+        if (body.get('paperId')) {
+          paperId = body.get('paperId');
+        }
       }
 
       const sources = getDB('sources', []);
       const newSource = {
         id: 'src-' + Math.random().toString(36).substr(2, 9),
         projectId,
+        paperId,
         filename,
         name: filename,
+        originalFilename: filename,
         type: 'application/pdf',
         size,
         uploadedAt: new Date().toISOString()
@@ -1121,6 +1242,159 @@ export default function mockAdapter(config) {
       setDB('feedbacks', feedbacks);
 
       return respond200({ message: `Trạng thái yêu cầu đã cập nhật thành công: ${action}` });
+    }
+
+    // 9. Admin Platform Metrics & Logs
+    if (method === 'GET' && pathWithoutQuery === '/api/health') {
+      const health = getDB('systemHealth', {
+        storageUsed: 42,
+        storageTotal: 100,
+        activeWorkspaces: 14,
+        cpuUsage: "28%"
+      });
+      return respond200(health);
+    }
+
+    if (method === 'GET' && pathWithoutQuery === '/api/user/audit-logs') {
+      const logs = getDB('auditLogs', []);
+      return respond200(logs);
+    }
+
+    // 10. Collections and Reference Documents
+    const collectionsProjectRegex = /^\/api\/projects\/([^/]+)\/collections$/;
+    const colProjMatch = pathWithoutQuery.match(collectionsProjectRegex);
+    if (method === 'GET' && colProjMatch) {
+      const pId = colProjMatch[1];
+      const collections = getDB('collections', []);
+      const filtered = collections.filter(c => c.projectId === pId);
+      console.log("[Mock API Debug] GET collections for project:", pId);
+      console.log("All collections in DB:", collections);
+      console.log("Filtered collections:", filtered);
+      return respond200(filtered);
+    }
+
+    if (method === 'POST' && pathWithoutQuery === '/api/collections') {
+      const collections = getDB('collections', []);
+      const newCol = {
+        id: 'col_' + Math.floor(100 + Math.random() * 900),
+        title: body.title,
+        description: body.description || 'No description provided.',
+        projectId: body.projectId || 'proj_101',
+        paperId: body.paperId || '',
+        createdAt: new Date().toISOString().split('T')[0]
+      };
+      collections.push(newCol);
+      setDB('collections', collections);
+
+      // Ghi audit log
+      const logs = getDB('auditLogs', []);
+      const currentUser = getCurrentUserFromHeaders();
+      logs.unshift({
+        id: 'log_' + Date.now(),
+        timestamp: new Date().toISOString().replace('T', ' ').substring(0, 19),
+        username: currentUser?.email || 'instructor.test@fpt.edu.vn',
+        role: currentUser?.role || 'INSTRUCTOR',
+        action: `Created new evidence collection template [${newCol.id}]`,
+        status: 'SUCCESS'
+      });
+      setDB('auditLogs', logs);
+
+      return respond201(newCol);
+    }
+
+    const collectionIdRegex = /^\/api\/collections\/([^/]+)$/;
+    const colMatch = pathWithoutQuery.match(collectionIdRegex);
+    if (method === 'PUT' && colMatch) {
+      const colId = colMatch[1];
+      const collections = getDB('collections', []);
+      const idx = collections.findIndex(c => c.id === colId);
+      if (idx === -1) return respond404('Không tìm thấy bộ sưu tập.');
+
+      collections[idx] = {
+        ...collections[idx],
+        title: body.title,
+        description: body.description
+      };
+      setDB('collections', collections);
+      return respond200(collections[idx]);
+    }
+
+    if (method === 'DELETE' && colMatch) {
+      const colId = colMatch[1];
+      const collections = getDB('collections', []);
+      setDB('collections', collections.filter(c => c.id !== colId));
+
+      const referenceDocuments = getDB('referenceDocuments', []);
+      setDB('referenceDocuments', referenceDocuments.filter(d => d.collectionId !== colId));
+      return respond200({ message: 'Xóa bộ sưu tập thành công.' });
+    }
+
+    if (method === 'GET' && pathWithoutQuery === '/api/collections/documents') {
+      const docs = getDB('referenceDocuments', []);
+      return respond200(docs);
+    }
+
+    const collectionDocsRegex = /^\/api\/collections\/([^/]+)\/documents$/;
+    const colDocsMatch = pathWithoutQuery.match(collectionDocsRegex);
+    if (method === 'POST' && colDocsMatch) {
+      const colId = colDocsMatch[1];
+      let filename = 'document.pdf';
+      let fileUrl = 'https://pdfobject.com/pdf/sample.pdf';
+
+      if (body instanceof FormData) {
+        const file = body.get('file');
+        if (file) {
+          filename = file.name;
+        }
+      } else if (body.fileName) {
+        filename = body.fileName;
+        fileUrl = body.fileUrl;
+      }
+
+      const referenceDocuments = getDB('referenceDocuments', []);
+      const idx = referenceDocuments.findIndex(d => d.collectionId === colId);
+      const newDoc = {
+        id: idx > -1 ? referenceDocuments[idx].id : `doc_${Date.now()}`,
+        name: filename,
+        collectionId: colId,
+        fileUrl: fileUrl,
+        uploadedAt: new Date().toISOString().split('T')[0]
+      };
+
+      if (idx > -1) {
+        referenceDocuments[idx] = newDoc;
+      } else {
+        referenceDocuments.push(newDoc);
+      }
+
+      setDB('referenceDocuments', referenceDocuments);
+      return respond201(newDoc);
+    }
+
+    const paperSectionsRegex = /^\/api\/papers\/([^/]+)\/sections$/;
+    const paperSectionsMatch = pathWithoutQuery.match(paperSectionsRegex);
+    if (method === 'GET' && paperSectionsMatch) {
+      const paperId = paperSectionsMatch[1];
+      const papers = getDB('papers', []);
+      const paper = papers.find(p => String(p.id) === String(paperId));
+      if (!paper) return respond404('Không tìm thấy tài liệu.');
+
+      const sections = [
+        { id: 'sec-1', sectionTitle: '1. Introduction' },
+        { id: 'sec-2', sectionTitle: '2. Communication Protocols and Risk Reduction' },
+        { id: 'sec-3', sectionTitle: '3. Addressing Assumptions' },
+        { id: 'sec-4', sectionTitle: '4. CI/CD and Automation Pipelines' }
+      ];
+      return respond200(sections);
+    }
+
+    const paperReviewRegex = /^\/api\/papers\/([^/]+)\/reviews$/;
+    const paperReviewMatch = pathWithoutQuery.match(paperReviewRegex);
+    if ((method === 'GET' || method === 'POST') && paperReviewMatch) {
+      return respond200({
+        styleFeedback: "Cấu trúc văn phong học thuật tốt. Tuy nhiên nên tránh sử dụng đại từ nhân xưng ngôi thứ nhất (như 'chúng tôi', 'tôi') trong các lập luận khoa học để giữ tính khách quan.",
+        structureFeedback: "Phần 2 (Phân tích) có nhắc đến sự phối hợp DevOps nhưng chưa đính kèm tài liệu tham khảo thực nghiệm từ các dự án lớn. Hãy bổ sung dữ liệu chứng cứ từ tệp nguồn."
+      });
     }
 
     return respond404(`Không tìm thấy endpoint giả lập cho: ${method} ${pathWithoutQuery}`);
