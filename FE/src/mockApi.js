@@ -48,160 +48,169 @@ export default function mockAdapter(config) {
     const initDB = () => {
       
 
-      if (!localStorage.getItem('mock_db_initialized_en_v9')) {
+      if (!localStorage.getItem('mock_db_initialized_en_v10')) {
         setDB('users', [
           { id: 1, email: 'student@evidencepilot.edu', password: '123', role: 'STUDENT', firstName: 'Nguyễn', lastName: 'Văn A', age: 21 },
+          { id: 102, email: 'student2@evidencepilot.edu', password: '123', role: 'STUDENT', firstName: 'Trần', lastName: 'Văn B', age: 22 },
+          { id: 103, email: 'student3@evidencepilot.edu', password: '123', role: 'STUDENT', firstName: 'Lê', lastName: 'Thị C', age: 21 },
+          { id: 104, email: 'student4@evidencepilot.edu', password: '123', role: 'STUDENT', firstName: 'Phạm', lastName: 'Văn D', age: 23 },
+          { id: 105, email: 'student5@evidencepilot.edu', password: '123', role: 'STUDENT', firstName: 'Hoàng', lastName: 'Thị E', age: 22 },
           { id: 2, email: 'instructor.test@fpt.edu.vn', password: '123', role: 'INSTRUCTOR', firstName: 'Dr. Phạm', lastName: 'Thị B', age: 45 }
         ]);
         setDB('projects', [
-          { id: 'proj-1', title: 'Nghiên cứu Agile & DevOps', name: 'Nghiên cứu Agile & DevOps', description: 'Dự án phân tích tính hiệu quả của Agile/Scrum kết hợp DevOps trong các doanh nghiệp khởi nghiệp.', ownerId: 1, status: 'ACTIVE', createdAt: new Date().toISOString() }
+          { 
+            id: 'proj-1', 
+            title: 'Nghiên cứu Agile & DevOps', 
+            name: 'Nghiên cứu Agile & DevOps', 
+            description: 'Dự án phân tích tính hiệu quả của Agile/Scrum kết hợp DevOps trong các doanh nghiệp khởi nghiệp.', 
+            ownerId: 1, 
+            status: 'ACTIVE', 
+            createdAt: new Date().toISOString(),
+            instructorId: 2,
+            members: [
+              { email: 'student@evidencepilot.edu', role: 'PL' },
+              { email: 'student2@evidencepilot.edu', role: 'RW' },
+              { email: 'student3@evidencepilot.edu', role: 'DG' },
+              { email: 'student4@evidencepilot.edu', role: 'LR' },
+              { email: 'student5@evidencepilot.edu', role: 'MS' }
+            ]
+          }
         ]);
         setDB('sources', [
-          { id: 'src-1', projectId: 'proj-1', paperId: 'paper-2', filename: 'agile-performance-report.pdf', name: 'agile-performance-report.pdf', originalFilename: 'agile-performance-report.pdf', type: 'application/pdf', size: 1024500, uploadedAt: new Date().toISOString() },
-          { id: 'src-2', projectId: 'proj-1', paperId: 'paper-2', filename: 'devops-adoption-metrics.pdf', name: 'devops-adoption-metrics.pdf', originalFilename: 'devops-adoption-metrics.pdf', type: 'application/pdf', size: 852000, uploadedAt: new Date().toISOString() },
-          { id: 'src-3', projectId: 'proj-1', paperId: 'paper-1', filename: 'react-rendering-perf.pdf', name: 'react-rendering-perf.pdf', originalFilename: 'react-rendering-perf.pdf', type: 'application/pdf', size: 450000, uploadedAt: new Date().toISOString() }
+          { id: 'src-1', projectId: 'proj-1', filename: 'agile-performance-report.pdf', name: 'agile-performance-report.pdf', originalFilename: 'agile-performance-report.pdf', type: 'application/pdf', size: 1024500, uploadedAt: new Date().toISOString() },
+          { id: 'src-2', projectId: 'proj-1', filename: 'devops-adoption-metrics.pdf', name: 'devops-adoption-metrics.pdf', originalFilename: 'devops-adoption-metrics.pdf', type: 'application/pdf', size: 852000, uploadedAt: new Date().toISOString() },
+          { id: 'src-3', projectId: 'proj-1', filename: 'react-rendering-perf.pdf', name: 'react-rendering-perf.pdf', originalFilename: 'react-rendering-perf.pdf', type: 'application/pdf', size: 450000, uploadedAt: new Date().toISOString() }
         ]);
         setDB('papers', [
           {
-            id: 'paper-1',
+            id: 'paper-1-main',
             projectId: 'proj-1',
-            name: 'react-benchmarks.tex',
-            originalFilename: 'react-benchmarks.tex',
-            filename: 'react-benchmarks.tex',
-            size: 6000,
-            uploadedAt: new Date(Date.now() - 10 * 3600 * 1000).toISOString(),
-            content: '% LaTeX Draft - React Benchmarks\n\\documentclass{article}\n\\usepackage[utf-8]{inputenc}\n\\usepackage{xcolor}\n\\usepackage{soul}\n\\begin{document}\n\\title{React Concurrent Mode Performance Benchmarks}\n\\author{John Doe}\n\\maketitle\n\\section{Introduction}\nReact concurrent rendering introduces scheduling priorities. Under high load, we verify that \\hl{React Concurrent Mode improves rendering scheduling priorities under high load.} Component state updates are split into low and high priority tasks.\n\\end{document}',
-            extractedText: '% LaTeX Draft - React Benchmarks\n\\documentclass{article}\n\\usepackage[utf-8]{inputenc}\n\\usepackage{xcolor}\n\\usepackage{soul}\n\\begin{document}\n\\title{React Concurrent Mode Performance Benchmarks}\n\\author{John Doe}\n\\maketitle\n\\section{Introduction}\nReact concurrent rendering introduces scheduling priorities. Under high load, we verify that \\hl{React Concurrent Mode improves rendering scheduling priorities under high load.} Component state updates are split into low and high priority tasks.\n\\end{document}'
+            name: 'main.tex',
+            filename: 'main.tex',
+            size: 1500,
+            uploadedAt: new Date().toISOString(),
+            content: `% LaTeX main.tex\n\\documentclass[conference]{IEEEtran}\n\\usepackage[utf8]{inputenc}\n\\usepackage{graphicx}\n\\usepackage{booktabs}\n\\usepackage{listings}\n\\usepackage{hyperref}\n\n\\begin{document}\n\n\\title{Nghiên cứu Agile \\& DevOps trong Khởi nghiệp}\n\\author{\\IEEEauthorblockN{Nguyen Van A, Tran Van B, Le Thi C}\n\\IEEEauthorblockA{FPT University, Vietnam}}\n\n\\maketitle\n\n\\begin{abstract}\n\\input{sections/00_abstract}\n\\end{abstract}\n\n\\input{sections/01_intro}\n\\input{sections/02_related}\n\\input{sections/03_method}\n\\input{sections/04_results}\n\\input{sections/05_discussion}\n\\input{sections/06_threats}\n\\input{sections/07_conclusion}\n\n\\bibliographystyle{IEEEtran}\n\\bibliography{references}\n\n\\end{document}`,
+            extractedText: ''
           },
           {
-            id: 'paper-2',
+            id: 'paper-1-bib',
             projectId: 'proj-1',
-            name: 'agile-devops-thesis.tex',
-            originalFilename: 'agile-devops-thesis.tex',
-            filename: 'agile-devops-thesis.tex',
-            size: 12000,
-            uploadedAt: new Date(Date.now() - 9 * 3600 * 1000).toISOString(),
-            content: '% LaTeX Draft - Agile DevOps Analysis\n\\documentclass{article}\n\\usepackage[utf-8]{inputenc}\n\\usepackage{xcolor}\n\\usepackage{soul}\n\n\\title{Evidence-Based Automated Traceability in Agile Software Engineering}\n\\author{John Doe}\n\\date{\\today}\n\n\\begin{document}\n\\maketitle\n\n\\section{Introduction}\nAgile software development depends on fast communication between stakeholders, product owners, and delivery teams. However, project risk increases when feedback loops are informal or delayed. \n\n\\hl{Agile methods combined with DevOps improve software delivery frequency.} By tracking the relationships between developer claims and underlying source document facts, we can build a formal network of evidence that satisfies regulatory audits and sprint feedback loops.\n\n\\section{Team Collaboration and Ceremonies}\nThe Scrum guide establishes specific roles and ceremonies to build trust. Collaboration is key in modern development. Furthermore, \\hl{Daily standup meetings help identify technical blockers early.} Daily synchronization reduces blocker delays from weeks to under 24 hours.\n\nAt the end of each sprint, \\hl{Sprint Retrospective meetings drive continuous process improvement.} The team inspects its own performance and implements action items for the next cycle.\n\n\\section{CI/CD and Automation Pipelines}\nModern software delivery requires reliable automation. Integration and deployment processes must be automated to reduce manual errors. \\hl{CI/CD automation reduces software release defects.} \n\nAdditionally, continuous testing is critical. \\hl{Automated testing prevents regression defects during refactoring.} Running automated test suites on every pull request prevents regression defects. To keep codebase maintainable, developers must refactor. \\hl{Refactoring legacy code minimizes long-term technical debt.} Continuous refactoring prevents architectural decay.\n\n\\section{Quality Assurance and Peer Review}\nQuality assurance cannot rely only on tests. Human reviews are necessary. \\hl{Code review improves system design quality.} Peer reviews distribute system knowledge across the team and catch design issues.\n\nHowever, formal documentation is needed. \\hl{Informal feedback loops increase requirement drift risks.} Relying on informal chats instead of written requirements causes deviations. Similarly, \\hl{Oral agreements without tracking lead to deliverable mismatch.} Oral agreements tend to be forgotten or misinterpreted.\n\n\\section{Auditability and Traceability Graph}\nCompliance in regulated industries requires detailed audits. Manually mapping developer claims to technical evidence is exhausting. \\hl{A claims traceability graph simplifies the auditing process.} Our traceability graph reduces compliance audit time by 70\\% by automatically mapping claims to documents.\n\\end{document}',
-            extractedText: '% LaTeX Draft - Agile DevOps Analysis\n\\documentclass{article}\n\\usepackage[utf-8]{inputenc}\n\\usepackage{xcolor}\n\\usepackage{soul}\n\n\\title{Evidence-Based Automated Traceability in Agile Software Engineering}\n\\author{John Doe}\n\\date{\\today}\n\n\\begin{document}\n\\maketitle\n\n\\section{Introduction}\nAgile software development depends on fast communication between stakeholders, product owners, and delivery teams. However, project risk increases when feedback loops are informal or delayed. \n\n\\hl{Agile methods combined with DevOps improve software delivery frequency.} By tracking the relationships between developer claims and underlying source document facts, we can build a formal network of evidence that satisfies regulatory audits and sprint feedback loops.\n\n\\section{Team Collaboration and Ceremonies}\nThe Scrum guide establishes specific roles and ceremonies to build trust. Collaboration is key in modern development. Furthermore, \\hl{Daily standup meetings help identify technical blockers early.} Daily synchronization reduces blocker delays from weeks to under 24 hours.\n\nAt the end of each sprint, \\hl{Sprint Retrospective meetings drive continuous process improvement.} The team inspects its own performance and implements action items for the next cycle.\n\n\\section{CI/CD and Automation Pipelines}\nModern software delivery requires reliable automation. Integration and deployment processes must be automated to reduce manual errors. \\hl{CI/CD automation reduces software release defects.} \n\nAdditionally, continuous testing is critical. \\hl{Automated testing prevents regression defects during refactoring.} Running automated test suites on every pull request prevents regression defects. To keep codebase maintainable, developers must refactor. \\hl{Refactoring legacy code minimizes long-term technical debt.} Continuous refactoring prevents architectural decay.\n\n\\section{Quality Assurance and Peer Review}\nQuality assurance cannot rely only on tests. Human reviews are necessary. \\hl{Code review improves system design quality.} Peer reviews distribute system knowledge across the team and catch design issues.\n\nHowever, formal documentation is needed. \\hl{Informal feedback loops increase requirement drift risks.} Relying on informal chats instead of written requirements causes deviations. Similarly, \\hl{Oral agreements without tracking lead to deliverable mismatch.} Oral agreements tend to be forgotten or misinterpreted.\n\n\\section{Auditability and Traceability Graph}\nCompliance in regulated industries requires detailed audits. Manually mapping developer claims to technical evidence is exhausting. \\hl{A claims traceability graph simplifies the auditing process.} Our traceability graph reduces compliance audit time by 70\\% by automatically mapping claims to documents.\n\\end{document}'
+            name: 'references.bib',
+            filename: 'references.bib',
+            size: 500,
+            uploadedAt: new Date().toISOString(),
+            content: `@inproceedings{chen2023testgen,\n  author    = {Chen, Mark and others},\n  title     = {Evaluating Large Language Models for Unit Test Generation},\n  booktitle = {Proc. ICSE 2023},\n  year      = {2023},\n  doi       = {10.1145/3597503.3608135}\n}`,
+            extractedText: ''
           },
           {
-            id: 'paper-3',
+            id: 'paper-1-abstract',
             projectId: 'proj-1',
-            name: 'cicd-testing-pipelines.tex',
-            originalFilename: 'cicd-testing-pipelines.tex',
-            filename: 'cicd-testing-pipelines.tex',
-            size: 5500,
-            uploadedAt: new Date(Date.now() - 8 * 3600 * 1000).toISOString(),
-            content: '% LaTeX Draft - CI/CD Pipelines\n\\documentclass{article}\n\\usepackage[utf-8]{inputenc}\n\\usepackage{xcolor}\n\\usepackage{soul}\n\\begin{document}\n\\title{CI/CD Automation and Test Suite Predictability}\n\\author{John Doe}\n\\maketitle\n\\section{Introduction}\nAutomated deployment pipelines improve quality. We show that \\hl{CI/CD automation reduces software release defects.} Continuous checking blocks runtime failures.\n\\end{document}',
-            extractedText: '% LaTeX Draft - CI/CD Pipelines\n\\documentclass{article}\n\\usepackage[utf-8]{inputenc}\n\\usepackage{xcolor}\n\\usepackage{soul}\n\\begin{document}\n\\title{CI/CD Automation and Test Suite Predictability}\n\\author{John Doe}\n\\maketitle\n\\section{Introduction}\nAutomated deployment pipelines improve quality. We show that \\hl{CI/CD automation reduces software release defects.} Continuous checking blocks runtime failures.\n\\end{document}'
+            name: 'sections/00_abstract.tex',
+            filename: 'sections/00_abstract.tex',
+            size: 800,
+            uploadedAt: new Date().toISOString(),
+            assignedTo: 'student@evidencepilot.edu',
+            status: 'DRAFT',
+            comments: [],
+            content: `% Abstract (PL)\nUnit test generation remains labor-intensive despite tools like EvoSuite. No prior study has evaluated GPT-4o mini for this task using mutation score as the primary metric. We apply GPT-4o mini to 200 Java functions from the Apache Commons dataset and measure mutation score and branch coverage. GPT-4o mini achieves median mutation score 61.3% vs EvoSuite 48.7%. Our results suggest LLM-generated tests can complement search-based tools, particularly for functions with complex logic.`,
+            extractedText: ''
           },
           {
-            id: 'paper-4',
+            id: 'paper-1-intro',
             projectId: 'proj-1',
-            name: 'microservices-security.tex',
-            originalFilename: 'microservices-security.tex',
-            filename: 'microservices-security.tex',
-            size: 5000,
-            uploadedAt: new Date(Date.now() - 7 * 3600 * 1000).toISOString(),
-            content: '% LaTeX Draft - Security\n\\documentclass{article}\n\\usepackage[utf-8]{inputenc}\n\\usepackage{xcolor}\n\\usepackage{soul}\n\\begin{document}\n\\title{Microservices Security and Token Exchange Patterns}\n\\author{John Doe}\n\\maketitle\n\\section{Introduction}\nDistributed gateways manage authentication tokens. \\hl{Token caching across distributed gateway nodes minimizes latency.} This caches active sessions locally to avoid upstream queries.\n\\end{document}',
-            extractedText: '% LaTeX Draft - Security\n\\documentclass{article}\n\\usepackage[utf-8]{inputenc}\n\\usepackage{xcolor}\n\\usepackage{soul}\n\\begin{document}\n\\title{Microservices Security and Token Exchange Patterns}\n\\author{John Doe}\n\\maketitle\n\\section{Introduction}\nDistributed gateways manage authentication tokens. \\hl{Token caching across distributed gateway nodes minimizes latency.} This caches active sessions locally to avoid upstream queries.\n\\end{document}'
+            name: 'sections/01_intro.tex',
+            filename: 'sections/01_intro.tex',
+            size: 1000,
+            uploadedAt: new Date().toISOString(),
+            assignedTo: 'student2@evidencepilot.edu',
+            status: 'DRAFT',
+            comments: [],
+            content: `% Introduction (RW)\n\\section{Introduction}\n\\label{sec:intro}\nWriting software unit tests manually is time-consuming and error-prone. Recent studies have shown that Large Language Models (LLMs) can automate unit test generation. However, no study has evaluated GPT-4o mini on Java projects using mutation score as the primary metric.\n\nIn this paper, we present an empirical evaluation of GPT-4o mini. To summarize, this paper contributes:\n(1) The first empirical evaluation of GPT-4o mini for Java unit test generation.\n(2) Experimental results showing LLM-generated tests achieve higher mutation score.\n\nThe rest of this paper is structured as follows. Section \\ref{sec:related} discusses related work.`,
+            extractedText: ''
           },
           {
-            id: 'paper-5',
+            id: 'paper-1-related',
             projectId: 'proj-1',
-            name: 'devops-infrastructure-as-code.tex',
-            originalFilename: 'devops-infrastructure-as-code.tex',
-            filename: 'devops-infrastructure-as-code.tex',
-            size: 5800,
-            uploadedAt: new Date(Date.now() - 6 * 3600 * 1000).toISOString(),
-            content: '% LaTeX Draft - DevOps IaC\n\\documentclass{article}\n\\usepackage[utf-8]{inputenc}\n\\usepackage{xcolor}\n\\usepackage{soul}\n\\begin{document}\n\\title{DevOps Infrastructure as Code Audit Compliance}\n\\author{John Doe}\n\\maketitle\n\\section{Introduction}\nModern cloud environments are defined as code. We propose that \\hl{An automated compliance auditing framework maps deployment scripts to security requirements.} This ensures continuous checks on clouds.\n\\end{document}',
-            extractedText: '% LaTeX Draft - DevOps IaC\n\\documentclass{article}\n\\usepackage[utf-8]{inputenc}\n\\usepackage{xcolor}\n\\usepackage{soul}\n\\begin{document}\n\\title{DevOps Infrastructure as Code Audit Compliance}\n\\author{John Doe}\n\\maketitle\n\\section{Introduction}\nModern cloud environments are defined as code. We propose that \\hl{An automated compliance auditing framework maps deployment scripts to security requirements.} This ensures continuous checks on clouds.\n\\end{document}'
+            name: 'sections/02_related.tex',
+            filename: 'sections/02_related.tex',
+            size: 900,
+            uploadedAt: new Date().toISOString(),
+            assignedTo: 'student3@evidencepilot.edu',
+            status: 'DRAFT',
+            comments: [],
+            content: `% Related Work (DG)\n\\section{Related Work}\n\\label{sec:related}\n\\subsection{LLM for Test Generation}\nSeveral researchers have explored LLMs for test generation. Chen et al. \\cite{chen2023testgen} evaluated LLMs on Python code. However, their study did not focus on Java or mutation coverage.\n\n\\subsection{Search-Based Software Testing}\nSearch-Based Software Testing (SBST) tools like EvoSuite use genetic algorithms to generate tests. While effective at coverage, they often generate tests with weak assertions. Unlike prior work, this paper is the first to directly compare GPT-4o mini with EvoSuite on Java libraries.`,
+            extractedText: ''
           },
           {
-            id: 'paper-6',
+            id: 'paper-1-method',
             projectId: 'proj-1',
-            name: 'distributed-database-consensus.tex',
-            originalFilename: 'distributed-database-consensus.tex',
-            filename: 'distributed-database-consensus.tex',
-            size: 6100,
-            uploadedAt: new Date(Date.now() - 5 * 3600 * 1000).toISOString(),
-            content: '% LaTeX Draft - Consensus\n\\documentclass{article}\n\\usepackage[utf-8]{inputenc}\n\\usepackage{xcolor}\n\\usepackage{soul}\n\\begin{document}\n\\title{Distributed Consensus under Transient Partitions}\n\\author{John Doe}\n\\maketitle\n\\section{Introduction}\nState replication requires quorum nodes. \\hl{Raft consensus protocol heals quickly under network drops.} Our logs show swift leader re-elections.\n\\end{document}',
-            extractedText: '% LaTeX Draft - Consensus\n\\documentclass{article}\n\\usepackage[utf-8]{inputenc}\n\\usepackage{xcolor}\n\\usepackage{soul}\n\\begin{document}\n\\title{Distributed Consensus under Transient Partitions}\n\\author{John Doe}\n\\maketitle\n\\section{Introduction}\nState replication requires quorum nodes. \\hl{Raft consensus protocol heals quickly under network drops.} Our logs show swift leader re-elections.\n\\end{document}'
+            name: 'sections/03_method.tex',
+            filename: 'sections/03_method.tex',
+            size: 1000,
+            uploadedAt: new Date().toISOString(),
+            assignedTo: 'student4@evidencepilot.edu',
+            status: 'DRAFT',
+            comments: [],
+            content: `% Methodology (LR)\n\\section{Methodology}\n\\label{sec:method}\n\\subsection{Dataset}\nWe select 200 Java functions from the Apache Commons library. These functions represent typical utility code with varying complexity.\n\n\\subsection{Experimental Setup}\nWe use the \\texttt{gpt-4o-mini-2024-07-18} model with temperature 0. The prompt template includes the signature and body of the target Java function. Our replication package, including datasets, prompts, scripts, and raw results, is publicly available at: \\url{https://github.com/evidencepilot/swt301-replication}.\n\n\\subsection{Metrics}\nWe measure mutation score using PITest, and branch coverage using JaCoCo.`,
+            extractedText: ''
           },
           {
-            id: 'paper-7',
+            id: 'paper-1-results',
             projectId: 'proj-1',
-            name: 'react-state-management.tex',
-            originalFilename: 'react-state-management.tex',
-            filename: 'react-state-management.tex',
-            size: 6400,
-            uploadedAt: new Date(Date.now() - 4 * 3600 * 1000).toISOString(),
-            content: '% LaTeX Draft - React State\n\\documentclass{article}\n\\usepackage[utf-8]{inputenc}\n\\usepackage{xcolor}\n\\usepackage{soul}\n\\begin{document}\n\\title{React State Management in Scalable Applications}\n\\author{John Doe}\n\\maketitle\n\\section{Introduction}\nGlobal states trigger component renders. \\hl{Zustand has a lower memory footprint and prevents unnecessary re-renders compared to Redux.} This optimizes client performance.\n\\end{document}',
-            extractedText: '% LaTeX Draft - React State\n\\documentclass{article}\n\\usepackage[utf-8]{inputenc}\n\\usepackage{xcolor}\n\\usepackage{soul}\n\\begin{document}\n\\title{React State Management in Scalable Applications}\n\\author{John Doe}\n\\maketitle\n\\section{Introduction}\nGlobal states trigger component renders. \\hl{Zustand has a lower memory footprint and prevents unnecessary re-renders compared to Redux.} This optimizes client performance.\n\\end{document}'
+            name: 'sections/04_results.tex',
+            filename: 'sections/04_results.tex',
+            size: 1100,
+            uploadedAt: new Date().toISOString(),
+            assignedTo: 'student5@evidencepilot.edu',
+            status: 'DRAFT',
+            comments: [],
+            content: `% Results (MS)\n\\section{Results}\n\\label{sec:results}\nTable \\ref{tab:results} shows the mutation scores for each tool. The median mutation score of GPT-4o mini is 61.3% (IQR: [55%, 72%]). The Wilcoxon signed-rank test yields $p=0.007$, showing statistical significance with Cliff's delta $\\delta=0.21$ (small effect size).\n\n\\begin{table}[h]\n\\caption{Mutation Score Comparison}\n\\label{tab:results}\n\\begin{center}\n\\begin{tabular}{lccc}\n\\toprule\n\\textbf{Condition} & \\textbf{Mutation Score} & \\textbf{p-value} & \\textbf{Effect Size} \\\\\n\\midrule\nEvoSuite & 0.48 $\\pm$ 0.12 & — & — \\\\\nGPT-4o mini & 0.61 $\\pm$ 0.09 & p=0.007 & $\\delta$=0.21 (small) \\\\\n\\bottomrule\n\\end{tabular}\n\\end{center}\n\\end{table}`,
+            extractedText: ''
           },
           {
-            id: 'paper-8',
+            id: 'paper-1-discussion',
             projectId: 'proj-1',
-            name: 'kafka-event-driven-architecture.tex',
-            originalFilename: 'kafka-event-driven-architecture.tex',
-            filename: 'kafka-event-driven-architecture.tex',
-            size: 6200,
-            uploadedAt: new Date(Date.now() - 3 * 3600 * 1000).toISOString(),
-            content: '% LaTeX Draft - Kafka\n\\documentclass{article}\n\\usepackage[utf-8]{inputenc}\n\\usepackage{xcolor}\n\\usepackage{soul}\n\\begin{document}\n\\title{Kafka Event-Driven Microservices Communication}\n\\author{John Doe}\n\\maketitle\n\\section{Introduction}\nEvent streams must be highly reliable. \\hl{Transactional message brokers guarantee exact message ordering.} This prevents state anomalies across downstream consumers.\n\\end{document}',
-            extractedText: '% LaTeX Draft - Kafka\n\\documentclass{article}\n\\usepackage[utf-8]{inputenc}\n\\usepackage{xcolor}\n\\usepackage{soul}\n\\begin{document}\n\\title{Kafka Event-Driven Microservices Communication}\n\\author{John Doe}\n\\maketitle\n\\section{Introduction}\nEvent streams must be highly reliable. \\hl{Transactional message brokers guarantee exact message ordering.} This prevents state anomalies across downstream consumers.\n\\end{document}'
+            name: 'sections/05_discussion.tex',
+            filename: 'sections/05_discussion.tex',
+            size: 800,
+            uploadedAt: new Date().toISOString(),
+            assignedTo: 'student@evidencepilot.edu',
+            status: 'DRAFT',
+            comments: [],
+            content: `% Discussion (PL)\n\\section{Discussion}\n\\label{sec:discussion}\n\\subsection{Qualitative Analysis of Failures}\nWe observe that GPT-4o mini struggles with complex mathematical constraints, producing uncompilable assertions in 5% of cases.\n\n\\subsection{Comparison with Prior Work}\nOur results confirm the findings of Chen et al. \\cite{chen2023testgen} that LLMs generate more readable assertions than search-based tools.`,
+            extractedText: ''
           },
           {
-            id: 'paper-9',
+            id: 'paper-1-threats',
             projectId: 'proj-1',
-            name: 'api-gateway-rate-limiting.tex',
-            originalFilename: 'api-gateway-rate-limiting.tex',
-            filename: 'api-gateway-rate-limiting.tex',
-            size: 5900,
-            uploadedAt: new Date(Date.now() - 2 * 3600 * 1000).toISOString(),
-            content: '% LaTeX Draft - Gateways\n\\documentclass{article}\n\\usepackage[utf-8]{inputenc}\n\\usepackage{xcolor}\n\\usepackage{soul}\n\\begin{document}\n\\title{API Gateway Adaptive Rate Limiting Algorithms}\n\\author{John Doe}\n\\maketitle\n\\section{Introduction}\nGateways protect backend services. We show that \\hl{Dynamic token-bucket algorithms prevent backend server starvation.} Incoming bursts are smoothed dynamically.\n\\end{document}',
-            extractedText: '% LaTeX Draft - Gateways\n\\documentclass{article}\n\\usepackage[utf-8]{inputenc}\n\\usepackage{xcolor}\n\\usepackage{soul}\n\\begin{document}\n\\title{API Gateway Adaptive Rate Limiting Algorithms}\n\\author{John Doe}\n\\maketitle\n\\section{Introduction}\nGateways protect backend services. We show that \\hl{Dynamic token-bucket algorithms prevent backend server starvation.} Incoming bursts are smoothed dynamically.\n\\end{document}'
+            name: 'sections/06_threats.tex',
+            filename: 'sections/06_threats.tex',
+            size: 800,
+            uploadedAt: new Date().toISOString(),
+            assignedTo: 'student2@evidencepilot.edu',
+            status: 'DRAFT',
+            comments: [],
+            content: `% Threats to Validity (RW)\n\\section{Threats to Validity}\n\\label{sec:threats}\n\\begin{itemize}\n\\item \\textbf{Internal:} The stochastic nature of LLMs could cause variations in results. We mitigated this by setting temperature to 0.\n\\item \\textbf{External:} Our findings are limited to Java functions from Apache Commons, which may not generalize to other programming languages.\n\\end{itemize}`,
+            extractedText: ''
           },
           {
-            id: 'paper-10',
+            id: 'paper-1-conclusion',
             projectId: 'proj-1',
-            name: 'react-server-components.tex',
-            originalFilename: 'react-server-components.tex',
-            filename: 'react-server-components.tex',
-            size: 5700,
-            uploadedAt: new Date(Date.now() - 1 * 3600 * 1000).toISOString(),
-            content: '% LaTeX Draft - RSC\n\\documentclass{article}\n\\usepackage[utf-8]{inputenc}\n\\usepackage{xcolor}\n\\usepackage{soul}\n\\begin{document}\n\\title{React Server Components Architecture Analysis}\n\\author{John Doe}\n\\maketitle\n\\section{Introduction}\nServer components render on the backend. \\hl{React Server Components reduce client-side bundle sizes.} Code dependencies stay server-side.\n\\end{document}',
-            extractedText: '% LaTeX Draft - RSC\n\\documentclass{article}\n\\usepackage[utf-8]{inputenc}\n\\usepackage{xcolor}\n\\usepackage{soul}\n\\begin{document}\n\\title{React Server Components Architecture Analysis}\n\\author{John Doe}\n\\maketitle\n\\section{Introduction}\nServer components render on the backend. \\hl{React Server Components reduce client-side bundle sizes.} Code dependencies stay server-side.\n\\end{document}'
-          }
-        ]);
-        setDB('paperVersions', [
-          { 
-            id: 'ver-1', 
-            paperId: 'paper-1', 
-            versionName: 'Initial Draft', 
-            description: 'Initial LaTeX outline for Agile & DevOps research.', 
-            content: '% LaTeX Draft - Initial Draft\n\\documentclass{article}\n\\begin{document}\n\\title{Evidence Traceability in Agile Environments}\n\\author{John Doe}\n\\maketitle\n\\section{Introduction}\nAgile methods combined with DevOps improve software delivery.\n\\end{document}', 
-            createdAt: new Date(Date.now() - 3600000 * 2).toISOString() 
-          },
-          { 
-            id: 'ver-2', 
-            paperId: 'paper-1', 
-            versionName: 'Expanded Draft', 
-            description: 'Added daily standup section and CI/CD parameters.', 
-            content: '% LaTeX Draft - Expanded Draft\n\\documentclass{article}\n\\begin{document}\n\\title{Evidence Traceability in Agile Environments}\n\\author{John Doe}\n\\maketitle\n\\section{Introduction}\nAgile methods combined with DevOps improve software delivery.\n\\section{Team Collaboration}\n\\hl{Daily standup meetings help identify technical blockers early.}\n\\end{document}', 
-            createdAt: new Date(Date.now() - 3600000).toISOString() 
+            name: 'sections/07_conclusion.tex',
+            filename: 'sections/07_conclusion.tex',
+            size: 800,
+            uploadedAt: new Date().toISOString(),
+            assignedTo: 'student2@evidencepilot.edu',
+            status: 'DRAFT',
+            comments: [],
+            content: `% Conclusion (RW)\n\\section{Conclusion}\n\\label{sec:conclusion}\nWe evaluated GPT-4o mini on Java unit test generation. Results show that GPT-4o mini outperforms EvoSuite with a median mutation score of 61.3%. Future work could investigate prompt engineering techniques to improve compilability.`,
+            extractedText: ''
           }
         ]);
         setDB('claims', [
           { id: 'claim-1', projectId: 'proj-1', content: 'Agile methods combined with DevOps improve software delivery frequency.', active: true, aiConfidenceScore: 0.88, status: 'ANALYZED', verdict: 'SUPPORTED', confidence: 0.88, explanation: 'Tài liệu agile-performance-report.pdf ghi nhận hiệu suất triển khai tăng gấp 4 lần sau khi áp dụng kết hợp.', missing_evidence: [] },
           { id: 'claim-2', projectId: 'proj-1', content: 'Daily standup meetings help identify technical blockers early.', active: true, aiConfidenceScore: 0.82, status: 'ANALYZED', verdict: 'SUPPORTED', confidence: 0.82, explanation: 'Tài liệu scrum-guide-2020.pdf nhấn mạnh vai trò của Daily Scrum trong việc tối ưu hóa khả năng cộng tác và xử lý điểm nghẽn.', missing_evidence: [] },
-          { id: 'claim-3', projectId: 'proj-1', content: 'CI/CD automation reduces software release defects.', active: true, aiConfidenceScore: 0.91, status: 'ANALYZED', verdict: 'SUPPORTED', confidence: 0.91, explanation: 'Tài liệu devops-adoption-metrics.pdf ghi nhận tỉ lệ lỗi giảm 40% nhờ tích hợp kiểm thử tự động.', missing_evidence: [] },
-          { id: 'claim-4', projectId: 'proj-1', content: 'Code review improves system design quality.', active: true, aiConfidenceScore: null, status: 'PENDING' },
-          { id: 'claim-5', projectId: 'proj-1', content: 'Informal feedback loops increase requirement drift risks.', active: true, aiConfidenceScore: null, status: 'PENDING' },
-          { id: 'claim-6', projectId: 'proj-1', content: 'Automated testing prevents regression defects during refactoring.', active: true, aiConfidenceScore: null, status: 'PENDING' },
-          { id: 'claim-7', projectId: 'proj-1', content: 'Refactoring legacy code minimizes long-term technical debt.', active: true, aiConfidenceScore: null, status: 'PENDING' },
-          { id: 'claim-8', projectId: 'proj-1', content: 'A claims traceability graph simplifies the auditing process.', active: true, aiConfidenceScore: null, status: 'PENDING' },
-          { id: 'claim-9', projectId: 'proj-1', content: 'Sprint Retrospective meetings drive continuous process improvement.', active: true, aiConfidenceScore: null, status: 'PENDING' },
-          { id: 'claim-10', projectId: 'proj-1', content: 'Oral agreements without tracking lead to deliverable mismatch.', active: true, aiConfidenceScore: null, status: 'PENDING' }
+          { id: 'claim-3', projectId: 'proj-1', content: 'CI/CD automation reduces software release defects.', active: true, aiConfidenceScore: 0.91, status: 'ANALYZED', verdict: 'SUPPORTED', confidence: 0.91, explanation: 'Tài liệu devops-adoption-metrics.pdf ghi nhận tỉ lệ lỗi giảm 40% nhờ tích hợp kiểm thử tự động.', missing_evidence: [] }
         ]);
         setDB('datasets', [
           { id: 'data-1', title: 'Tài liệu tham khảo Agile chuẩn', description: 'Tập hợp các báo cáo khoa học về Agile Software Development.', ownerId: 2, createdAt: new Date().toISOString() }
@@ -213,9 +222,9 @@ export default function mockAdapter(config) {
           id: 'req-initial-1',
           projectId: 'proj-1',
           project: { id: 'proj-1', name: 'Nghiên cứu Agile & DevOps', title: 'Nghiên cứu Agile & DevOps' },
-          paperId: 'paper-1',
-          paperName: 'react-benchmarks.tex',
-          student: { firstName: 'Học', lastName: 'Viên', email: 'student@evidencepilot.edu' },
+          paperId: 'paper-1-intro',
+          paperName: 'sections/01_intro.tex',
+          student: { firstName: 'Học', lastName: 'Viên', email: 'student2@evidencepilot.edu' },
           instructorId: 2,
           status: 'PENDING',
           requestedAt: new Date(Date.now() - 24 * 3600 * 1000).toISOString()
@@ -225,14 +234,14 @@ export default function mockAdapter(config) {
           id: 'fb-initial-1',
           requestId: 'req-initial-1',
           projectId: 'proj-1',
-          paperId: 'paper-1',
-          paperName: 'react-benchmarks.tex',
+          paperId: 'paper-1-intro',
+          paperName: 'sections/01_intro.tex',
           instructorId: 2,
           content: 'Yêu cầu phê duyệt đang chờ được xử lý.',
           status: 'PENDING',
           requestedAt: initialRequest.requestedAt
         }]);
-        localStorage.setItem('mock_db_initialized_en_v9', 'true');
+        localStorage.setItem('mock_db_initialized_en_v10', 'true');
       }
 
       if (!localStorage.getItem('mock_db_initialized_collections_v4')) {
@@ -523,6 +532,12 @@ export default function mockAdapter(config) {
       return respond200(instructors);
     }
 
+    if (method === 'GET' && pathWithoutQuery === '/api/users/students') {
+      const users = getDB('users', []);
+      const students = users.filter(u => u.role === 'STUDENT');
+      return respond200(students);
+    }
+
     // 3. Tập dữ liệu (Datasets của Giảng viên)
     if (method === 'GET' && pathWithoutQuery === '/api/datasets') {
       const datasets = getDB('datasets', []);
@@ -642,17 +657,175 @@ export default function mockAdapter(config) {
       const projects = getDB('projects', []);
       const currentUser = getCurrentUserFromHeaders();
       if (!currentUser) return respond401();
+
+      const newProjId = 'proj-' + Math.random().toString(36).substr(2, 9);
+      const title = body.title || 'Dự án mới';
+      const description = body.description || '';
+      const instructorId = body.instructorId ? Number(body.instructorId) : 2;
+      const memberEmails = body.memberEmails || [];
+      const template = body.template || 'IEEE';
+
+      // Default creator is Project Leader (PL)
+      const projectMembers = [
+        { email: currentUser.email, role: 'PL' }
+      ];
+
+      // Add invited members
+      memberEmails.forEach(email => {
+        if (email.trim() && email.trim() !== currentUser.email) {
+          projectMembers.push({ email: email.trim(), role: 'RW' }); // Default role RW
+        }
+      });
+
       const newProject = {
-        id: 'proj-' + Math.random().toString(36).substr(2, 9),
-        title: body.title,
-        name: body.title,
-        description: body.description,
+        id: newProjId,
+        title,
+        name: title,
+        description,
         ownerId: currentUser.id,
         status: 'ACTIVE',
-        createdAt: new Date().toISOString()
+        createdAt: new Date().toISOString(),
+        instructorId,
+        members: projectMembers
       };
+
       projects.push(newProject);
       setDB('projects', projects);
+
+      // Seed LaTeX files based on selected template
+      const papers = getDB('papers', []);
+      let mainContent = '';
+
+      if (template === 'IEEE') {
+        mainContent = `% LaTeX main.tex (IEEE Conference Template)
+\\documentclass[conference]{IEEEtran}
+\\usepackage[utf8]{inputenc}
+\\usepackage{graphicx}
+\\usepackage{booktabs}
+\\usepackage{listings}
+\\usepackage{hyperref}
+
+\\begin{document}
+
+\\title{${title}}
+\\author{\\IEEEauthorblockN{Nguyen Van A, Tran Van B}
+\\IEEEauthorblockA{FPT University, Vietnam}}
+
+\\maketitle
+
+\\begin{abstract}
+\\input{sections/00_abstract}
+\\end{abstract}
+
+\\input{sections/01_intro}
+\\input{sections/02_related}
+\\input{sections/03_method}
+\\input{sections/04_results}
+\\input{sections/05_discussion}
+\\input{sections/06_threats}
+\\input{sections/07_conclusion}
+
+\\bibliographystyle{IEEEtran}
+\\bibliography{references}
+
+\\end{document}`;
+      } else if (template === 'ACM') {
+        mainContent = `% LaTeX main.tex (ACM sigconf Template)
+\\documentclass[sigconf]{acmart}
+\\usepackage[utf8]{inputenc}
+\\usepackage{booktabs}
+\\usepackage{hyperref}
+
+\\begin{document}
+
+\\title{${title}}
+\\author{Nguyen Van A}
+\\affiliation{\\institution{FPT University}\\country{Vietnam}}
+\\email{student@evidencepilot.edu}
+
+\\begin{abstract}
+\\input{sections/00_abstract}
+\\end{abstract}
+
+\\maketitle
+
+\\input{sections/01_intro}
+\\input{sections/02_related}
+\\input{sections/03_method}
+\\input{sections/04_results}
+\\input{sections/05_discussion}
+\\input{sections/06_threats}
+\\input{sections/07_conclusion}
+
+\\bibliographystyle{ACM-Reference-Format}
+\\bibliography{references}
+
+\\end{document}`;
+      } else {
+        // Springer
+        mainContent = `% LaTeX main.tex (Springer llncs Template)
+\\documentclass{llncs}
+\\usepackage[utf8]{inputenc}
+\\usepackage{booktabs}
+\\usepackage{hyperref}
+
+\\begin{document}
+
+\\title{${title}}
+\\author{Nguyen Van A}
+\\institute{FPT University, Vietnam}
+
+\\maketitle
+
+\\begin{abstract}
+\\input{sections/00_abstract}
+\\end{abstract}
+
+\\input{sections/01_intro}
+\\input{sections/02_related}
+\\input{sections/03_method}
+\\input{sections/04_results}
+\\input{sections/05_discussion}
+\\input{sections/06_threats}
+\\input{sections/07_conclusion}
+
+\\bibliographystyle{splncs04}
+\\bibliography{references}
+
+\\end{document}`;
+      }
+
+      const fileTemplates = [
+        { id: `${newProjId}-main`, name: 'main.tex', filename: 'main.tex', content: mainContent },
+        { id: `${newProjId}-bib`, name: 'references.bib', filename: 'references.bib', content: `@inproceedings{chen2023testgen,\n  author    = {Chen, Mark and others},\n  title     = {Evaluating Large Language Models for Unit Test Generation},\n  booktitle = {Proc. ICSE 2023},\n  year      = {2023},\n  doi       = {10.1145/3597503.3608135}\n}` },
+        { id: `${newProjId}-abstract`, name: 'sections/00_abstract.tex', filename: 'sections/00_abstract.tex', content: '% Abstract (PL)\nUnit test generation remains labor-intensive despite tools like EvoSuite. No prior study has evaluated GPT-4o mini for this task using mutation score as the primary metric. We apply GPT-4o mini to 200 Java functions from the Apache Commons dataset and measure mutation score and branch coverage. GPT-4o mini achieves median mutation score 61.3% vs EvoSuite 48.7%. Our results suggest LLM-generated tests can complement search-based tools, particularly for functions with complex logic.', assignedTo: currentUser.email },
+        { id: `${newProjId}-intro`, name: 'sections/01_intro.tex', filename: 'sections/01_intro.tex', content: '% Introduction (RW)\n\\section{Introduction}\n\\label{sec:intro}\nWriting software unit tests manually is time-consuming and error-prone. Recent studies have shown that Large Language Models (LLMs) can automate unit test generation. However, no study has evaluated GPT-4o mini on Java projects using mutation score as the primary metric.\n\nIn this paper, we present an empirical evaluation of GPT-4o mini. To summarize, this paper contributes:\n(1) The first empirical evaluation of GPT-4o mini for Java unit test generation.\n(2) Experimental results showing LLM-generated tests achieve higher mutation score.\n\nThe rest of this paper is structured as follows. Section \\ref{sec:related} discusses related work.', assignedTo: memberEmails[0] || '' },
+        { id: `${newProjId}-related`, name: 'sections/02_related.tex', filename: 'sections/02_related.tex', content: '% Related Work (DG)\n\\section{Related Work}\n\\label{sec:related}\n\\subsection{LLM for Test Generation}\nSeveral researchers have explored LLMs for test generation. Chen et al. \\cite{chen2023testgen} evaluated LLMs on Python code. However, their study did not focus on Java or mutation coverage.\n\n\\subsection{Search-Based Software Testing}\nSearch-Based Software Testing (SBST) tools like EvoSuite use genetic algorithms to generate tests. While effective at coverage, they often generate tests with weak assertions. Unlike prior work, this paper is the first to directly compare GPT-4o mini with EvoSuite on Java libraries.', assignedTo: memberEmails[1] || '' },
+        { id: `${newProjId}-method`, name: 'sections/03_method.tex', filename: 'sections/03_method.tex', content: '% Methodology (LR)\n\\section{Methodology}\n\\label{sec:method}\n\\subsection{Dataset}\nWe select 200 Java functions from the Apache Commons library. These functions represent typical utility code with varying complexity.\n\n\\subsection{Experimental Setup}\nWe use the \\texttt{gpt-4o-mini-2024-07-18} model with temperature 0. The prompt template includes the signature and body of the target Java function. Our replication package, including datasets, prompts, scripts, and raw results, is publicly available at: \\url{https://github.com/evidencepilot/swt301-replication}.\n\n\\subsection{Metrics}\nWe measure mutation score using PITest, and branch coverage using JaCoCo.', assignedTo: memberEmails[2] || '' },
+        { id: `${newProjId}-results`, name: 'sections/04_results.tex', filename: 'sections/04_results.tex', content: '% Results (MS)\n\\section{Results}\n\\label{sec:results}\nTable \\ref{tab:results} shows the mutation scores for each tool. The median mutation score of GPT-4o mini is 61.3% (IQR: [55%, 72%]). The Wilcoxon signed-rank test yields $p=0.007$, showing statistical significance with Cliff\'s delta $\\delta=0.21$ (small effect size).\n\n\\begin{table}[h]\n\\caption{Mutation Score Comparison}\n\\label{tab:results}\n\\begin{center}\n\\begin{tabular}{lccc}\n\\toprule\n\\textbf{Condition} & \\textbf{Mutation Score} & \\textbf{p-value} & \\textbf{Effect Size} \\\\\n\\midrule\nEvoSuite & 0.48 $\\pm$ 0.12 & — & — \\\\\nGPT-4o mini & 0.61 $\\pm$ 0.09 & p=0.007 & $\\delta$=0.21 (small) \\\\\n\\bottomrule\n\\end{tabular}\n\\end{center}\n\\end{table}', assignedTo: memberEmails[3] || '' },
+        { id: `${newProjId}-discussion`, name: 'sections/05_discussion.tex', filename: 'sections/05_discussion.tex', content: '% Discussion (PL)\n\\section{Discussion}\n\\label{sec:discussion}\n\\subsection{Qualitative Analysis of Failures}\nWe observe that GPT-4o mini struggles with complex mathematical constraints, producing uncompilable assertions in 5% of cases.\n\n\\subsection{Comparison with Prior Work}\nOur results confirm the findings of Chen et al. \\cite{chen2023testgen} that LLMs generate more readable assertions than search-based tools.', assignedTo: currentUser.email },
+        { id: `${newProjId}-threats`, name: 'sections/06_threats.tex', filename: 'sections/06_threats.tex', content: '% Threats to Validity (RW)\n\\section{Threats to Validity}\n\\label{sec:threats}\n\\begin{itemize}\n\\item \\textbf{Internal:} The stochastic nature of LLMs could cause variations in results. We mitigated this by setting temperature to 0.\n\\item \\textbf{External:} Our findings are limited to Java functions from Apache Commons, which may not generalize to other programming languages.\n\\end{itemize}', assignedTo: memberEmails[0] || '' },
+        { id: `${newProjId}-conclusion`, name: 'sections/07_conclusion.tex', filename: 'sections/07_conclusion.tex', content: '% Conclusion (RW)\n\\section{Conclusion}\n\\label{sec:conclusion}\nWe evaluated GPT-4o mini on Java unit test generation. Results show that GPT-4o mini outperforms EvoSuite with a median mutation score of 61.3%. Future work could investigate prompt engineering techniques to improve compilability.', assignedTo: memberEmails[0] || '' }
+      ];
+
+      fileTemplates.forEach(t => {
+        papers.push({
+          id: t.id,
+          projectId: newProjId,
+          name: t.name,
+          filename: t.filename,
+          originalFilename: t.filename,
+          content: t.content,
+          extractedText: '',
+          size: t.content.length,
+          uploadedAt: new Date().toISOString(),
+          assignedTo: t.assignedTo || '',
+          status: 'DRAFT',
+          comments: []
+        });
+      });
+      setDB('papers', papers);
+
       return respond201(newProject);
     }
 
@@ -724,6 +897,33 @@ export default function mockAdapter(config) {
       const project = projects.find(p => p.id === projId);
       if (!project) return respond404('Không tìm thấy dự án.');
       return respond200(project);
+    }
+
+    if (method === 'PUT' && pathWithoutQuery.startsWith('/api/projects/') && pathWithoutQuery.endsWith('/members')) {
+      const parts = pathWithoutQuery.split('/');
+      const projId = parts[3];
+      const projects = getDB('projects', []);
+      const pIdx = projects.findIndex(p => p.id === projId);
+      if (pIdx === -1) return respond404('Không tìm thấy dự án.');
+
+      const { members, assignments } = body;
+
+      if (members) {
+        projects[pIdx].members = members;
+      }
+      setDB('projects', projects);
+
+      if (assignments) {
+        const papers = getDB('papers', []);
+        papers.forEach(p => {
+          if (p.projectId === projId && assignments[p.filename] !== undefined) {
+            p.assignedTo = assignments[p.filename];
+          }
+        });
+        setDB('papers', papers);
+      }
+
+      return respond200(projects[pIdx]);
     }
 
     if (method === 'DELETE' && pathWithoutQuery.startsWith('/api/projects/')) {
@@ -1116,6 +1316,11 @@ export default function mockAdapter(config) {
       const paper = papers.find(p => String(p.id) === String(paperId));
       const paperName = paper ? (paper.originalFilename || paper.name) : 'Unknown Paper.tex';
 
+      if (paper) {
+        paper.status = 'SUBMITTED';
+        setDB('papers', papers);
+      }
+
       const currentUser = getCurrentUserFromHeaders();
       const feedbackRequests = getDB('feedbackRequests', []);
       const newRequest = {
@@ -1219,7 +1424,7 @@ export default function mockAdapter(config) {
 
       if (action === 'reviewed') {
         feedbackRequests[reqIdx].status = 'APPROVED';
-        if (pIdx !== -1) projects[pIdx].status = 'COMPLETED';
+        if (pIdx !== -1) projects[pIdx].status = 'ACTIVE';
         if (fbIdx !== -1) {
           feedbacks[fbIdx].status = 'REVIEWED';
         }
@@ -1234,6 +1439,27 @@ export default function mockAdapter(config) {
         if (pIdx !== -1) projects[pIdx].status = 'ACTIVE';
         if (fbIdx !== -1) {
           feedbacks[fbIdx].status = 'RETURNED';
+        }
+      }
+
+      // Sync section paper status and comments
+      if (req.paperId) {
+        const papers = getDB('papers', []);
+        const paper = papers.find(p => String(p.id) === String(req.paperId));
+        if (paper) {
+          paper.status = action === 'reviewed' ? 'APPROVED' : 'DRAFT';
+          if (!paper.comments) paper.comments = [];
+          
+          const fb = feedbacks.find(f => f.requestId === reqId);
+          const commentText = fb ? fb.content : 'Không có nhận xét chi tiết.';
+          
+          paper.comments.push({
+            id: 'c-' + Math.random().toString(36).substr(2, 9),
+            author: 'Giảng viên',
+            text: commentText,
+            createdAt: new Date().toISOString()
+          });
+          setDB('papers', papers);
         }
       }
 

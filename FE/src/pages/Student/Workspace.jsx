@@ -91,6 +91,7 @@ export default function Workspace() {
   const [isUploading, setIsUploading] = useState(false);
   const [viewerFile, setViewerFile] = useState(null);
   const [currentUser, setCurrentUser] = useState(null);
+  const [allStudents, setAllStudents] = useState([]);
 
   const [showAiReviewModal, setShowAiReviewModal] = useState(false);
   const [loadingAiReview, setLoadingAiReview] = useState(false);
@@ -217,7 +218,67 @@ export default function Workspace() {
   const [editingClaim, setEditingClaim] = useState(null);
   const [editClaimContent, setEditClaimContent] = useState('');
 
-  const displayContent = selectedPaper ? codeContent : DEFAULT_SAMPLE_LATEX;
+  const getCompiledLatex = () => {
+    const mainFile = papers.find(p => p.filename === 'main.tex');
+    if (!mainFile) return selectedPaper ? codeContent : DEFAULT_SAMPLE_LATEX;
+
+    let compiled = selectedPaper?.filename === 'main.tex' ? codeContent : (mainFile.content || '');
+
+    const inputRegex = /\\input\{([^}]+)\}/g;
+    for (let i = 0; i < 5; i++) {
+      let hasReplaced = false;
+      compiled = compiled.replace(inputRegex, (match, path) => {
+        const cleanPath = path.endsWith('.tex') ? path : path + '.tex';
+        if (selectedPaper?.filename === cleanPath) {
+          hasReplaced = true;
+          return codeContent;
+        }
+        const file = papers.find(f => f.filename === cleanPath || f.name === cleanPath);
+        if (file) {
+          hasReplaced = true;
+          return file.content || '';
+        }
+        return match;
+      });
+      if (!hasReplaced) break;
+    }
+    return compiled;
+  };
+
+  const isEditingAllowed = (paperFile) => {
+    if (!paperFile) return false;
+    if (!currentUser) return false;
+    if (currentUser.role === 'INSTRUCTOR') return false;
+
+    const userRoleObj = project?.members?.find(m => m.email === currentUser.email);
+    const userRole = userRoleObj ? userRoleObj.role : (project?.ownerId === currentUser.id ? 'PL' : '');
+
+    if (paperFile.filename === 'main.tex' || paperFile.filename === 'references.bib') {
+      return userRole === 'PL';
+    }
+    if (paperFile.filename.startsWith('sections/')) {
+      return paperFile.assignedTo === currentUser.email;
+    }
+    return true;
+  };
+
+  const handleSubmitSectionReview = async () => {
+    if (!selectedPaper || !project) return;
+    try {
+      await api.put(`/api/papers/${selectedPaper.id}`, { content: codeContent });
+      await api.post(`/api/projects/${project.id}/submit-review`, {
+        instructorId: project.instructorId || 2,
+        paperId: selectedPaper.id
+      });
+      showToast('Đã nộp phê duyệt phần này thành công!');
+      await loadProjectData(project.id);
+    } catch (err) {
+      console.error('Failed to submit section review', err);
+      showToast('Lỗi khi nộp phê duyệt!');
+    }
+  };
+
+  const displayContent = getCompiledLatex();
 
   // Đồng bộ hóa luận điểm trực tiếp từ mã nguồn LaTeX
   const syncClaimsFromCode = async (code, projId) => {
@@ -358,6 +419,10 @@ export default function Workspace() {
         }
       })
       .catch(err => console.error('Failed to fetch instructors', err));
+
+    api.get('/api/users/students')
+      .then(res => setAllStudents(res.data || []))
+      .catch(err => console.error('Failed to fetch students', err));
   }, []);
 
   // 2. Hàm tải lại dữ liệu chi tiết của dự án
@@ -384,9 +449,9 @@ export default function Workspace() {
         if (paperList.length > 0) {
           const savedPaperId = localStorage.getItem('current_selected_paper_id');
           const matchedPaper = paperList.find(p => String(p.id) === String(savedPaperId));
-          const defaultPaper = matchedPaper || paperList[0];
+          const defaultPaper = matchedPaper || paperList.find(p => p.filename === 'main.tex') || paperList[0];
           setSelectedPaper(defaultPaper);
-          loadCode(defaultPaper.extractedText || defaultPaper.content || '');
+          loadCode(defaultPaper.content || '');
           localStorage.setItem('current_selected_paper_id', defaultPaper.id);
         } else {
         }
@@ -397,10 +462,26 @@ export default function Workspace() {
         const paperRes = await api.get(`/api/papers/by-project/${projId}`);
         const paperList = paperRes.data || [];
         if (paperList.length > 0) {
-          const savedPaperId = localStorage.getItem('current_selected_paper_id');
-          const matchedPaper = paperList.find(p => String(p.id) === String(savedPaperId));
-          const activePaper = matchedPaper || paperList[0];
-          const code = activePaper.extractedText || activePaper.content || '';
+          const mainFile = paperList.find(p => p.filename === 'main.tex');
+          const compileLocally = (mFile, files) => {
+            let compiled = mFile ? (mFile.content || '') : '';
+            const inputRegex = /\\input\{([^}]+)\}/g;
+            for (let i = 0; i < 5; i++) {
+              let hasReplaced = false;
+              compiled = compiled.replace(inputRegex, (match, path) => {
+                const cleanPath = path.endsWith('.tex') ? path : path + '.tex';
+                const file = files.find(f => f.filename === cleanPath || f.name === cleanPath);
+                if (file) {
+                  hasReplaced = true;
+                  return file.content || '';
+                }
+                return match;
+              });
+              if (!hasReplaced) break;
+            }
+            return compiled;
+          };
+          const code = compileLocally(mainFile, paperList);
           const matches = [...code.matchAll(/\hl\{([^}]+)\}/g)];
           const claimContents = matches.map(m => m[1].trim()).filter(Boolean);
           const syncRes = await api.post(`/api/projects/${projId}/sync-claims`, { claimContents });
@@ -909,12 +990,22 @@ export default function Workspace() {
 
   // Chèn cú pháp LaTeX nhanh
   const insertLatexTag = (tagType) => {
+    const userRoleObj = project?.members?.find(m => m.email === currentUser?.email);
+    const userRole = userRoleObj ? userRoleObj.role : (project?.ownerId === currentUser?.id ? 'PL' : '');
+    const isPL = userRole === 'PL';
+    const isAssigned = selectedPaper?.assignedTo === currentUser?.email;
+    const allowed = selectedPaper?.filename === 'main.tex' || selectedPaper?.filename === 'references.bib' ? isPL : isAssigned;
+    if (!allowed || selectedPaper?.status === 'APPROVED') {
+      showToast('Bạn không có quyền chỉnh sửa phần này!');
+      return;
+    }
+
     const textarea = document.getElementById('latex-textarea');
     if (!textarea) return;
 
     const start = textarea.selectionStart;
     const end = textarea.selectionEnd;
-    const text = displayContent;
+    const text = codeContent;
     const selectedText = text.substring(start, end);
 
     let insertion = '';
@@ -1010,12 +1101,22 @@ export default function Workspace() {
   };
 
   const insertSymbol = (sym) => {
+    const userRoleObj = project?.members?.find(m => m.email === currentUser?.email);
+    const userRole = userRoleObj ? userRoleObj.role : (project?.ownerId === currentUser?.id ? 'PL' : '');
+    const isPL = userRole === 'PL';
+    const isAssigned = selectedPaper?.assignedTo === currentUser?.email;
+    const allowed = selectedPaper?.filename === 'main.tex' || selectedPaper?.filename === 'references.bib' ? isPL : isAssigned;
+    if (!allowed || selectedPaper?.status === 'APPROVED') {
+      showToast('Bạn không có quyền chỉnh sửa phần này!');
+      return;
+    }
+
     const textarea = document.getElementById('latex-textarea');
     if (!textarea) return;
 
     const start = textarea.selectionStart;
     const end = textarea.selectionEnd;
-    const text = displayContent;
+    const text = codeContent;
     const insertion = sym;
 
     const newContent = text.substring(0, start) + insertion + text.substring(end);
@@ -1029,8 +1130,18 @@ export default function Workspace() {
   };
 
   const handleFindReplace = (replaceAll = false) => {
+    const userRoleObj = project?.members?.find(m => m.email === currentUser?.email);
+    const userRole = userRoleObj ? userRoleObj.role : (project?.ownerId === currentUser?.id ? 'PL' : '');
+    const isPL = userRole === 'PL';
+    const isAssigned = selectedPaper?.assignedTo === currentUser?.email;
+    const allowed = selectedPaper?.filename === 'main.tex' || selectedPaper?.filename === 'references.bib' ? isPL : isAssigned;
+    if (!allowed || selectedPaper?.status === 'APPROVED') {
+      showToast('Bạn không có quyền chỉnh sửa phần này!');
+      return;
+    }
+
     if (!searchQuery) return;
-    const text = displayContent;
+    const text = codeContent;
     if (replaceAll) {
       const newContent = text.replaceAll(searchQuery, replaceQuery);
       updateCode(newContent);
@@ -1189,7 +1300,8 @@ export default function Workspace() {
       setPapers(prev => prev.map(p => p.id === selectedPaper.id ? { ...p, content: codeContent, extractedText: codeContent } : p));
       
       // 2. Tự động đồng bộ các luận điểm và đối chiếu AI
-      await syncClaimsFromCode(codeContent, project.id);
+      const compiled = getCompiledLatex();
+      await syncClaimsFromCode(compiled, project.id);
 
       showToast('Đã biên dịch và lưu tài liệu thành công!');
     } catch (err) {
@@ -1788,46 +1900,104 @@ export default function Workspace() {
               
               {/* Folders */}
               <div className="pl-3 space-y-3">
-                {/* Folder 1: Drafts */}
+                {/* Folder 1: Paper Workspace */}
                 <div>
-                  <div className="flex items-center gap-1.5 text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">
+                  <div className="flex items-center gap-1.5 text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">
                     <span>📂 {UI_TEXT[language].paperDrafts}</span>
                   </div>
-                  <div className="pl-3 space-y-1">
+                  <div className="pl-3 space-y-1.5">
                     {papers.length === 0 ? (
                       <span className="text-[10px] text-slate-400 italic block py-1">{UI_TEXT[language].empty}</span>
                     ) : (
-                      papers.map(p => (
-                        <div
-                          key={p.id}
-                          onClick={async () => {
-                            setSelectedPaper(p);
-                            loadCode(p.extractedText || p.content || '');
-                            localStorage.setItem('current_selected_paper_id', p.id);
-                            await syncClaimsFromCode(p.extractedText || p.content || '', projectId);
-                          }}
-                          className={`flex items-center justify-between text-xs font-medium p-1.5 rounded cursor-pointer transition-all group ${selectedPaper?.id === p.id ? 'bg-indigo-50 text-indigo-700 font-bold border-l-2 border-indigo-600 shadow-sm' : 'text-slate-600 hover:bg-slate-200/60'}`}
-                        >
-                          <div className="flex items-center gap-1.5 truncate">
-                            <svg className="w-3.5 h-3.5 text-slate-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg>
-                            <span className="truncate" title={p.originalFilename || p.filename || 'main.tex'}>
-                              {(p.originalFilename || p.filename || 'main.tex').endsWith('.tex')
-                                ? (p.originalFilename || p.filename || 'main.tex')
-                                : (p.originalFilename || p.filename || 'main.tex').split('.')[0] + '.tex'}
-                            </span>
+                      <div className="space-y-1">
+                        {/* 1. main.tex */}
+                        {(() => {
+                          const p = papers.find(x => x.filename === 'main.tex');
+                          if (!p) return null;
+                          return (
+                            <div
+                              key={p.id}
+                              onClick={async () => {
+                                setSelectedPaper(p);
+                                loadCode(p.content || '');
+                                localStorage.setItem('current_selected_paper_id', p.id);
+                                await syncClaimsFromCode(getCompiledLatex(), projectId);
+                              }}
+                              className={`flex items-center justify-between text-xs font-semibold p-1.5 rounded cursor-pointer transition-all group ${selectedPaper?.id === p.id ? 'bg-indigo-50 text-indigo-700 font-bold border-l-2 border-indigo-600 shadow-sm' : 'text-slate-600 hover:bg-slate-200/60'}`}
+                            >
+                              <div className="flex items-center gap-1.5 truncate">
+                                <span>📄</span>
+                                <span className="truncate font-semibold" title={p.filename}>{p.filename}</span>
+                              </div>
+                            </div>
+                          );
+                        })()}
+
+                        {/* 2. references.bib */}
+                        {(() => {
+                          const p = papers.find(x => x.filename === 'references.bib');
+                          if (!p) return null;
+                          return (
+                            <div
+                              key={p.id}
+                              onClick={async () => {
+                                setSelectedPaper(p);
+                                loadCode(p.content || '');
+                                localStorage.setItem('current_selected_paper_id', p.id);
+                                await syncClaimsFromCode(getCompiledLatex(), projectId);
+                              }}
+                              className={`flex items-center justify-between text-xs font-semibold p-1.5 rounded cursor-pointer transition-all group ${selectedPaper?.id === p.id ? 'bg-indigo-50 text-indigo-700 font-bold border-l-2 border-indigo-600 shadow-sm' : 'text-slate-600 hover:bg-slate-200/60'}`}
+                            >
+                              <div className="flex items-center gap-1.5 truncate">
+                                <span>📚</span>
+                                <span className="truncate font-semibold" title={p.filename}>{p.filename}</span>
+                              </div>
+                            </div>
+                          );
+                        })()}
+
+                        {/* 3. Folder sections/ */}
+                        <div className="mt-2">
+                          <div className="flex items-center gap-1 text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mb-1.5">
+                            <span>📂 sections</span>
                           </div>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDeletePaper(p.id);
-                            }}
-                            className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-rose-600 transition-all p-0.5"
-                            title={UI_TEXT[language].deleteFile}
-                          >
-                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                          </button>
+                          <div className="pl-3 space-y-0.5 border-l border-slate-200">
+                            {papers
+                              .filter(p => p.filename.startsWith('sections/'))
+                              .sort((a, b) => a.filename.localeCompare(b.filename))
+                              .map(p => {
+                                const cleanFilename = p.filename.split('/').pop();
+                                const memberObj = project?.members?.find(m => m.email === p.assignedTo);
+                                const initialsBadge = memberObj ? `[${memberObj.role}]` : '';
+
+                                return (
+                                  <div
+                                    key={p.id}
+                                    onClick={async () => {
+                                      setSelectedPaper(p);
+                                      loadCode(p.content || '');
+                                      localStorage.setItem('current_selected_paper_id', p.id);
+                                      await syncClaimsFromCode(getCompiledLatex(), projectId);
+                                    }}
+                                    className={`flex items-center justify-between text-[11px] font-medium p-1.5 rounded cursor-pointer transition-all group ${selectedPaper?.id === p.id ? 'bg-indigo-50 text-indigo-700 font-bold border-l-2 border-indigo-600 shadow-sm' : 'text-slate-600 hover:bg-slate-200/60'}`}
+                                  >
+                                    <div className="flex items-center justify-between w-full truncate">
+                                      <div className="flex items-center gap-1.5 truncate">
+                                        <span>📝</span>
+                                        <span className="truncate" title={cleanFilename}>{cleanFilename}</span>
+                                      </div>
+                                      {initialsBadge && (
+                                        <span className="text-[9px] font-black text-indigo-650 bg-indigo-50 px-1 rounded shrink-0 scale-90">
+                                          {initialsBadge}
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                          </div>
                         </div>
-                      ))
+                      </div>
                     )}
                   </div>
                 </div>
@@ -2145,6 +2315,27 @@ export default function Workspace() {
                 </div>
 
                 <div className="flex items-center gap-1.5">
+                  {(() => {
+                    const userRoleObj = project?.members?.find(m => m.email === currentUser?.email);
+                    const userRole = userRoleObj ? userRoleObj.role : (project?.ownerId === currentUser?.id ? 'PL' : '');
+                    const isPL = userRole === 'PL';
+                    const isAssigned = selectedPaper?.assignedTo === currentUser?.email;
+                    const allowed = selectedPaper?.filename === 'main.tex' || selectedPaper?.filename === 'references.bib' ? isPL : isAssigned;
+                    
+                    if (selectedPaper && selectedPaper.filename.startsWith('sections/') && allowed && selectedPaper.status === 'DRAFT') {
+                      return (
+                        <button
+                          onClick={handleSubmitSectionReview}
+                          className="px-2.5 py-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded text-[11px] font-bold transition shadow-sm cursor-pointer flex items-center gap-1 shrink-0"
+                          title="Nộp riêng phần này lên giảng viên phê duyệt"
+                        >
+                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>
+                          Nộp phê duyệt
+                        </button>
+                      );
+                    }
+                    return null;
+                  })()}
                   {/* Search Kính lúp */}
                   <button
                     onClick={() => setShowSearchPanel(!showSearchPanel)}
@@ -2230,6 +2421,41 @@ export default function Workspace() {
               )}
             </div>
 
+            {/* Lock / Status Alert Banners */}
+            {(() => {
+              const userRoleObj = project?.members?.find(m => m.email === currentUser?.email);
+              const userRole = userRoleObj ? userRoleObj.role : (project?.ownerId === currentUser?.id ? 'PL' : '');
+              const isPL = userRole === 'PL';
+              const isAssigned = selectedPaper?.assignedTo === currentUser?.email;
+              const allowed = selectedPaper?.filename === 'main.tex' || selectedPaper?.filename === 'references.bib' ? isPL : isAssigned;
+              
+              if (!allowed && selectedPaper) {
+                return (
+                  <div className="bg-amber-50 border-b border-amber-200 text-amber-800 px-4 py-2 text-xs flex items-center gap-2 font-medium shrink-0">
+                    <svg className="w-4 h-4 text-amber-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                    <span>Chế độ chỉ xem. File này do <strong>{selectedPaper.assignedTo || 'Trưởng nhóm (PL)'}</strong> chịu trách nhiệm chỉnh sửa.</span>
+                  </div>
+                );
+              }
+              if (selectedPaper?.status === 'APPROVED') {
+                return (
+                  <div className="bg-emerald-50 border-b border-emerald-200 text-emerald-800 px-4 py-2 text-xs flex items-center gap-2 font-medium shrink-0">
+                    <svg className="w-4 h-4 text-emerald-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                    <span>Đã phê duyệt! Section này đã được giảng viên duyệt và không cần chỉnh sửa thêm.</span>
+                  </div>
+                );
+              }
+              if (selectedPaper?.status === 'SUBMITTED') {
+                return (
+                  <div className="bg-indigo-50 border-b border-indigo-200 text-indigo-800 px-4 py-2 text-xs flex items-center gap-2 font-medium shrink-0">
+                    <svg className="w-4 h-4 text-indigo-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                    <span>Đang chờ duyệt! Phần này đã được nộp lên giảng viên để chờ đánh giá.</span>
+                  </div>
+                );
+              }
+              return null;
+            })()}
+
             {/* Code / Visual Mode Container */}
             {editorMode === 'Code' ? (
               <div className="relative flex-1 flex bg-[#0d1117] overflow-hidden">
@@ -2239,7 +2465,7 @@ export default function Workspace() {
                   className="w-11 bg-[#090d12] border-r border-[#1a1f26] text-[#4f5b66] font-mono text-[12px] pt-5 text-right pr-2 select-none overflow-hidden shrink-0"
                   style={{ lineHeight: '26px' }}
                 >
-                  {displayContent.split('\n').map((_, i) => {
+                  {(codeContent || '').split('\n').map((_, i) => {
                     const errorMsg = getSyntaxErrors()[i];
                     const isError = errorMsg !== undefined;
                     return (
@@ -2269,8 +2495,25 @@ export default function Workspace() {
                 <div className="flex-1 relative overflow-hidden h-full">
                   <textarea
                     id="latex-textarea"
-                    value={displayContent}
-                    onChange={(e) => updateCode(e.target.value)}
+                    value={codeContent}
+                    onChange={(e) => {
+                      const userRoleObj = project?.members?.find(m => m.email === currentUser?.email);
+                      const userRole = userRoleObj ? userRoleObj.role : (project?.ownerId === currentUser?.id ? 'PL' : '');
+                      const isPL = userRole === 'PL';
+                      const isAssigned = selectedPaper?.assignedTo === currentUser?.email;
+                      const allowed = selectedPaper?.filename === 'main.tex' || selectedPaper?.filename === 'references.bib' ? isPL : isAssigned;
+                      if (allowed && selectedPaper?.status !== 'APPROVED') {
+                        updateCode(e.target.value);
+                      }
+                    }}
+                    readOnly={(() => {
+                      const userRoleObj = project?.members?.find(m => m.email === currentUser?.email);
+                      const userRole = userRoleObj ? userRoleObj.role : (project?.ownerId === currentUser?.id ? 'PL' : '');
+                      const isPL = userRole === 'PL';
+                      const isAssigned = selectedPaper?.assignedTo === currentUser?.email;
+                      const allowed = selectedPaper?.filename === 'main.tex' || selectedPaper?.filename === 'references.bib' ? isPL : isAssigned;
+                      return !allowed || selectedPaper?.status === 'APPROVED';
+                    })()}
                     onScroll={handleScroll}
                     spellCheck={false}
                     className="absolute inset-0 w-full h-full bg-transparent text-transparent caret-white resize-none outline-none z-10 m-0 border-0 font-mono text-[13px] p-5 whitespace-pre overflow-auto custom-scrollbar"
@@ -2282,7 +2525,7 @@ export default function Workspace() {
                     style={{ lineHeight: '26px' }}
                     aria-hidden="true"
                   >
-                    {displayContent.split('\n').map((line, index) => {
+                    {(codeContent || '').split('\n').map((line, index) => {
                       const lineError = getSyntaxErrors()[index];
                       const isLineError = lineError !== undefined;
                       const lineParts = line.split(/(\\[a-zA-Z]+|\{[^{}]*\})/g).map((part, j) => {
@@ -2317,8 +2560,15 @@ export default function Workspace() {
               </div>
             ) : (
               <RichTextEditor
-                initialHtml={generateRichTextHtml(displayContent)}
-                readOnly={false}
+                initialHtml={generateRichTextHtml(codeContent)}
+                readOnly={(() => {
+                  const userRoleObj = project?.members?.find(m => m.email === currentUser?.email);
+                  const userRole = userRoleObj ? userRoleObj.role : (project?.ownerId === currentUser?.id ? 'PL' : '');
+                  const isPL = userRole === 'PL';
+                  const isAssigned = selectedPaper?.assignedTo === currentUser?.email;
+                  const allowed = selectedPaper?.filename === 'main.tex' || selectedPaper?.filename === 'references.bib' ? isPL : isAssigned;
+                  return !allowed || selectedPaper?.status === 'APPROVED';
+                })()}
                 onHtmlChange={(target) => {
                   const newCode = parseHtmlToLatex(target);
                   updateCode(newCode);
@@ -2475,6 +2725,13 @@ export default function Workspace() {
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" /></svg>
               {UI_TEXT[language].tabGraph}
               {activeTab === 'Graph' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-600 shadow-[0_-2px_8px_rgba(79,70,229,0.5)]"></div>}
+            </button>
+            <button
+              onClick={() => handleTabClick('Team')}
+              className={`flex-1 py-3 text-[10px] font-bold uppercase tracking-wider flex flex-col justify-center items-center gap-1 transition-all relative ${activeTab === 'Team' ? 'text-indigo-600' : 'text-slate-500 hover:text-slate-800 hover:bg-slate-50'}`}>
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
+              {language === 'vi' ? 'Thành viên' : 'Team'}
+              {activeTab === 'Team' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-600 shadow-[0_-2px_8px_rgba(79,70,229,0.5)]"></div>}
             </button>
             
             {/* Collapse button */}
@@ -3020,8 +3277,229 @@ export default function Workspace() {
             </div>
           )}
 
-      </div>
-    </aside>
+          {/* 5. TEAM TAB (Quản lý thành viên & Phân công công việc) */}
+          {activeTab === 'Team' && (
+            <div className="flex flex-col gap-4 animate-in fade-in duration-200 text-xs">
+              
+              {/* Member Invitation Panel (PL Only) */}
+              {project?.ownerId === currentUser?.id && (
+                <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+                  <h4 className="font-extrabold text-slate-700 uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
+                    <span>➕</span> Mời thành viên mới
+                  </h4>
+                  <div className="flex gap-2">
+                    <select
+                      id="team-invite-select"
+                      className="flex-1 border border-slate-200 rounded-lg px-3 py-2 text-slate-700 bg-white text-xs font-medium"
+                      defaultValue=""
+                    >
+                      <option value="" disabled>-- Chọn sinh viên --</option>
+                      {allStudents
+                        ?.filter(s => !project.members?.some(m => m.email === s.email))
+                        ?.map(s => (
+                          <option key={s.id} value={s.email}>{s.firstName} {s.lastName} ({s.email})</option>
+                        ))
+                      }
+                    </select>
+                    <button
+                      onClick={async () => {
+                        const selectEl = document.getElementById('team-invite-select');
+                        const email = selectEl.value;
+                        if (!email) return;
+                        const updatedMembers = [...(project.members || []), { email, role: 'RW' }];
+                        try {
+                          const res = await api.put(`/api/projects/${project.id}/members`, {
+                            members: updatedMembers
+                          });
+                          setProject(res.data);
+                          selectEl.value = "";
+                          showToast('Đã mời thành viên thành công!');
+                        } catch (err) {
+                          console.error(err);
+                          showToast('Lỗi khi mời thành viên!');
+                        }
+                      }}
+                      className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-lg transition shadow-sm cursor-pointer text-xs"
+                    >
+                      Mời
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Members List Panel */}
+              <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+                <h4 className="font-extrabold text-slate-700 uppercase tracking-wider mb-3 flex items-center gap-1.5">
+                  <span>👥</span> Danh sách nhóm ({project?.members?.length || 0})
+                </h4>
+                <div className="space-y-3">
+                  {project?.members?.map((m, idx) => {
+                    const isPL = m.role === 'PL';
+                    const dbUser = allStudents?.find(s => s.email === m.email) || (m.email === 'student@evidencepilot.edu' ? currentUser : null);
+                    const displayName = dbUser ? `${dbUser.firstName} ${dbUser.lastName}` : m.email.split('@')[0];
+                    const isCurrentUserPL = project?.ownerId === currentUser?.id;
+                    
+                    return (
+                      <div key={idx} className="p-3 bg-slate-50 border border-slate-200/80 rounded-xl flex flex-col gap-2 relative text-xs">
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <div className="font-bold text-slate-800 flex items-center gap-1.5 text-xs">
+                              {displayName}
+                              {m.email === currentUser?.email && (
+                                <span className="bg-indigo-100 text-indigo-700 text-[9px] font-black px-1.5 py-0.2 rounded-full uppercase tracking-wider">Bạn</span>
+                              )}
+                            </div>
+                            <div className="text-[10px] text-slate-400 font-mono mt-0.5">{m.email}</div>
+                          </div>
+                          {isCurrentUserPL && m.email !== currentUser?.email && (
+                            <button
+                              onClick={async () => {
+                                if (window.confirm(`Xóa ${displayName} khỏi nhóm?`)) {
+                                  const updatedMembers = project.members.filter(mem => mem.email !== m.email);
+                                  const assignments = {};
+                                  papers.forEach(p => {
+                                    if (p.assignedTo === m.email) {
+                                      assignments[p.filename] = '';
+                                    }
+                                  });
+                                  try {
+                                    const res = await api.put(`/api/projects/${project.id}/members`, {
+                                      members: updatedMembers,
+                                      assignments
+                                    });
+                                    setProject(res.data);
+                                    const paperRes = await api.get(`/api/papers/by-project/${project.id}`);
+                                    setPapers(paperRes.data || []);
+                                    showToast('Đã xóa thành viên khỏi nhóm.');
+                                  } catch (err) {
+                                    console.error(err);
+                                  }
+                                }
+                              }}
+                              className="text-slate-400 hover:text-red-500 transition-colors p-1"
+                              title="Xóa thành viên"
+                            >
+                              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                            </button>
+                          )}
+                        </div>
+                        
+                        <div className="flex items-center gap-2 pt-1 border-t border-slate-100 text-[11px]">
+                          <span className="text-slate-400 font-bold text-[10px]">Vai trò:</span>
+                          {isCurrentUserPL && m.email !== currentUser?.email ? (
+                            <select
+                              value={m.role}
+                              onChange={async (e) => {
+                                const newRole = e.target.value;
+                                const updatedMembers = project.members.map(mem => mem.email === m.email ? { ...mem, role: newRole } : mem);
+                                try {
+                                  const res = await api.put(`/api/projects/${project.id}/members`, {
+                                    members: updatedMembers
+                                  });
+                                  setProject(res.data);
+                                  showToast('Đã cập nhật vai trò thành viên.');
+                                } catch (err) {
+                                  console.error(err);
+                                }
+                              }}
+                              className="border border-slate-200 rounded px-1.5 py-0.5 bg-white text-slate-700 text-xs w-36"
+                            >
+                              <option value="PL">Project Leader (PL)</option>
+                              <option value="RW">Related Work (RW)</option>
+                              <option value="DG">Discussion Generator (DG)</option>
+                              <option value="LR">Lead Researcher (LR)</option>
+                              <option value="MS">Metric Specialist (MS)</option>
+                            </select>
+                          ) : (
+                            <span className="font-bold text-slate-650 bg-slate-200/50 px-2 py-0.5 rounded text-[10px] uppercase tracking-wider">
+                              {m.role === 'PL' ? 'Project Leader (PL)' : 
+                               m.role === 'RW' ? 'Related Work (RW)' :
+                               m.role === 'DG' ? 'Discussion Gen (DG)' :
+                               m.role === 'LR' ? 'Lead Researcher (LR)' :
+                               m.role === 'MS' ? 'Metric Specialist (MS)' : m.role}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Section Assignment Panel */}
+              <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm text-xs">
+                <h4 className="font-extrabold text-slate-700 uppercase tracking-wider mb-3 flex items-center gap-1.5">
+                  <span>📌</span> Phân công viết phần (Sections)
+                </h4>
+                <div className="space-y-2.5">
+                  {papers
+                    ?.filter(p => p.filename.startsWith('sections/'))
+                    ?.sort((a, b) => a.filename.localeCompare(b.filename))
+                    ?.map((p, idx) => {
+                      const isCurrentUserPL = project?.ownerId === currentUser?.id;
+                      const cleanName = p.filename.split('/').pop().replace('.tex', '').substring(3).toUpperCase();
+                      const statusColors = {
+                        DRAFT: 'bg-slate-100 text-slate-500',
+                        SUBMITTED: 'bg-amber-100 text-amber-700',
+                        APPROVED: 'bg-emerald-100 text-emerald-700'
+                      };
+                      
+                      return (
+                        <div key={idx} className="p-2.5 bg-slate-50 border border-slate-200/50 rounded-lg flex flex-col gap-1.5 text-xs">
+                          <div className="flex justify-between items-center">
+                            <span className="font-bold text-slate-700 font-mono text-[11px]">§{idx + 1} {cleanName}</span>
+                            <span className={`text-[9px] font-black px-1.5 py-0.2 rounded uppercase tracking-wider ${statusColors[p.status] || 'bg-slate-100 text-slate-500'}`}>
+                              {p.status || 'DRAFT'}
+                            </span>
+                          </div>
+                          <div className="flex items-center justify-between text-[11px] gap-2 pt-1 border-t border-slate-100">
+                            <span className="text-slate-400 font-semibold shrink-0">Người phụ trách:</span>
+                            {isCurrentUserPL ? (
+                              <select
+                                value={p.assignedTo || ""}
+                                onChange={async (e) => {
+                                  const email = e.target.value;
+                                  try {
+                                    const res = await api.put(`/api/projects/${project.id}/members`, {
+                                      assignments: { [p.filename]: email }
+                                    });
+                                    const paperRes = await api.get(`/api/papers/by-project/${project.id}`);
+                                    setPapers(paperRes.data || []);
+                                    showToast(`Đã phân công ${p.filename.split('/').pop()} thành công.`);
+                                  } catch (err) {
+                                    console.error(err);
+                                    showToast('Lỗi khi phân công!');
+                                  }
+                                }}
+                                className="border border-slate-200 rounded px-1.5 py-0.5 bg-white text-slate-700 text-xs w-36 truncate"
+                              >
+                                <option value="">-- Chưa phân công --</option>
+                                {project.members?.map(mem => {
+                                  const memUser = allStudents?.find(s => s.email === mem.email) || (mem.email === 'student@evidencepilot.edu' ? currentUser : null);
+                                  const memName = memUser ? `${memUser.firstName} ${memUser.lastName}` : mem.email;
+                                  return (
+                                    <option key={mem.email} value={mem.email}>{memName}</option>
+                                  );
+                                })}
+                              </select>
+                            ) : (
+                              <span className="font-medium text-slate-705 truncate w-32 text-right">
+                                {(() => {
+                                  const memUser = allStudents?.find(s => s.email === p.assignedTo) || (p.assignedTo === 'student@evidencepilot.edu' ? currentUser : null);
+                                  return memUser ? `${memUser.firstName} ${memUser.lastName}` : (p.assignedTo || 'Chưa phân công');
+                                })()}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </aside>
       </div>
 
 
