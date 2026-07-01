@@ -48,7 +48,7 @@ export default function mockAdapter(config) {
     const initDB = () => {
       
 
-      if (!localStorage.getItem('mock_db_initialized_en_v10')) {
+      if (!localStorage.getItem('mock_db_initialized_en_v11')) {
         setDB('users', [
           { id: 1, email: 'student@evidencepilot.edu', password: '123', role: 'STUDENT', firstName: 'Nguyễn', lastName: 'Văn A', age: 21 },
           { id: 102, email: 'student2@evidencepilot.edu', password: '123', role: 'STUDENT', firstName: 'Trần', lastName: 'Văn B', age: 22 },
@@ -123,7 +123,7 @@ export default function mockAdapter(config) {
             size: 1000,
             uploadedAt: new Date().toISOString(),
             assignedTo: 'student2@evidencepilot.edu',
-            status: 'DRAFT',
+            status: 'SUBMITTED',
             comments: [],
             content: `% Introduction (RW)\n\\section{Introduction}\n\\label{sec:intro}\nWriting software unit tests manually is time-consuming and error-prone. Recent studies have shown that Large Language Models (LLMs) can automate unit test generation. However, no study has evaluated GPT-4o mini on Java projects using mutation score as the primary metric.\n\nIn this paper, we present an empirical evaluation of GPT-4o mini. To summarize, this paper contributes:\n(1) The first empirical evaluation of GPT-4o mini for Java unit test generation.\n(2) Experimental results showing LLM-generated tests achieve higher mutation score.\n\nThe rest of this paper is structured as follows. Section \\ref{sec:related} discusses related work.`,
             extractedText: ''
@@ -241,7 +241,7 @@ export default function mockAdapter(config) {
           status: 'PENDING',
           requestedAt: initialRequest.requestedAt
         }]);
-        localStorage.setItem('mock_db_initialized_en_v10', 'true');
+        localStorage.setItem('mock_db_initialized_en_v11', 'true');
       }
 
       if (!localStorage.getItem('mock_db_initialized_collections_v4')) {
