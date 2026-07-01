@@ -3281,6 +3281,30 @@ export default function Workspace() {
           {activeTab === 'Team' && (
             <div className="flex flex-col gap-4 animate-in fade-in duration-200 text-xs">
               
+              {/* Giảng viên hướng dẫn */}
+              {(() => {
+                const projInst = instructorsList.find(inst => Number(inst.id) === Number(project?.instructorId));
+                if (!projInst) return null;
+                return (
+                  <div className="bg-gradient-to-r from-blue-50 to-indigo-50/50 border border-blue-200 rounded-xl p-4 shadow-sm">
+                    <h4 className="font-extrabold text-indigo-900 uppercase tracking-wider mb-2.5 flex items-center gap-1.5 text-xs">
+                      <span>👨‍🏫</span> Giảng viên hướng dẫn
+                    </h4>
+                    <div className="flex items-center gap-3 bg-white p-3 border border-indigo-100 rounded-xl">
+                      <div className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-700 font-bold flex items-center justify-center border border-indigo-200 shrink-0 text-xs">
+                        {projInst.firstName.charAt(0)}
+                      </div>
+                      <div>
+                        <div className="font-bold text-slate-800 text-xs">
+                          {projInst.firstName} {projInst.lastName}
+                        </div>
+                        <div className="text-[10px] text-slate-400 font-mono mt-0.5">{projInst.email}</div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
+
               {/* Member Invitation Panel (PL Only) */}
               {project?.ownerId === currentUser?.id && (
                 <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
