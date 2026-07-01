@@ -1395,6 +1395,8 @@ export default function Workspace() {
         .replace(/\\usepackage.*?\n/g, '')
         .replace(/\\begin\{document\}/g, '')
         .replace(/\\end\{document\}/g, '')
+        .replace(/\\bibliographystyle\{.*?\}/g, '')
+        .replace(/\\bibliography\{.*?\}/g, '')
         .replace(/\\maketitle/g, '');
 
       const sections = body.split(/\\section\{([^}]+)\}/);
@@ -1485,6 +1487,14 @@ export default function Workspace() {
           label: match[2]
         }));
 
+        tokenizeMacro(/\\texttt\{([^}]+)\}/g, 'mono', (match) => ({
+          content: match[1]
+        }));
+
+        tokenizeMacro(/\\url\{([^}]+)\}/g, 'url', (match) => ({
+          url: match[1]
+        }));
+
         tokenizeMacro(/\\textbf\{([^}]+)\}/g, 'bold', (match) => ({
           content: match[1]
         }));
@@ -1553,8 +1563,15 @@ export default function Workspace() {
               return <h4 key={idx} className="font-bold text-sm mt-3 mb-1 text-slate-800 font-serif">{parseText(token.content)}</h4>;
             case 'cite':
               return <span key={idx} className="text-xs font-semibold text-indigo-650 hover:underline cursor-pointer" title={`Citation: ${token.key}`}>[{token.key}]</span>;
-            case 'ref':
-              return <span key={idx} className="font-semibold text-slate-700" title={`Reference: ${token.key}`}>{token.key}</span>;
+            case 'ref': {
+              let displayVal = '1';
+              if (token.key && token.key.startsWith('sec:')) displayVal = 'I';
+              return <span key={idx} className="font-semibold text-slate-700" title={`Reference: ${token.key}`}>{displayVal}</span>;
+            }
+            case 'mono':
+              return <code key={idx} className="font-mono text-xs bg-slate-100 text-slate-800 px-1 py-0.5 rounded">{parseText(token.content)}</code>;
+            case 'url':
+              return <a key={idx} href={token.url} target="_blank" rel="noopener noreferrer" className="text-indigo-650 hover:underline">{token.url}</a>;
             case 'href':
               return <a key={idx} href={token.url} target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:underline inline-flex items-center gap-0.5">{parseText(token.label)}⤎</a>;
             case 'inline-math':
@@ -1730,6 +1747,8 @@ export default function Workspace() {
       .replace(/\\usepackage.*?\n/g, '')
       .replace(/\\begin\{document\}/g, '')
       .replace(/\\end\{document\}/g, '')
+      .replace(/\\bibliographystyle\{.*?\}/g, '')
+      .replace(/\\bibliography\{.*?\}/g, '')
       .replace(/\\maketitle/g, '');
 
     const sections = body.split(/\\section\{([^}]+)\}/);
