@@ -30,19 +30,39 @@ export default function InstructorDashboard() {
     setLoading(true);
     setErrorMessage("");
     try {
+      // BƯỚC 1: Lấy thông tin giảng viên hiện tại đang đăng nhập để có ID
+      const userRes = await api.get('/api/users/me');
+      const currentInstructorId = Number(userRes.data?.id);
+
+      // BƯỚC 2: Gọi API lấy dữ liệu thô (hoặc lấy từ local mock db tương ứng cấu trúc file Admin)
       let url = `/api/projects?page=${page}&size=8&sort=createdAt,desc`;
       if (searchTerm) url += `&q=${encodeURIComponent(searchTerm)}`;
       if (statusFilter) url += `&status=${statusFilter}`;
 
       const response = await api.get(url);
       const data = response.data;
+      
+      let rawProjects = [];
       if (Array.isArray(data)) {
-        setProjects(data);
-        setTotalElements(data.length);
+        rawProjects = data;
       } else {
-        setProjects(data.content || []);
-        setTotalElements(data.totalElements || 0);
+        rawProjects = data.content || [];
       }
+
+      // BƯỚC 3: Thực hiện bộ lọc (Chỉ lấy dự án mà instructorIds có chứa ID giảng viên hoặc trùng với instructorId)
+      const filteredProjects = rawProjects.filter(project => {
+        if (project.instructorIds && Array.isArray(project.instructorIds)) {
+          return project.instructorIds.map(id => Number(id)).includes(currentInstructorId);
+        }
+        if (project.instructorId) {
+          return Number(project.instructorId) === currentInstructorId;
+        }
+        return false; // Không được gán cho ai thì ẩn đi
+      });
+
+      setProjects(filteredProjects);
+      setTotalElements(filteredProjects.length);
+
     } catch (error) {
       console.error("Error loading workspace monitor:", error);
       setErrorMessage("Could not synchronize dynamic student projects cluster state.");
@@ -110,7 +130,6 @@ export default function InstructorDashboard() {
             <span className="font-bold text-xl tracking-wider">Evidence Pilot</span>
           </div>
           <div className="flex items-center space-x-6">
-            {/* Tag Badge Mode */}
             <div className="flex items-center space-x-2 bg-white/10 px-3 py-1.5 rounded border border-white/20">
               <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse"></div>
               <span className="text-xs font-semibold text-blue-50 tracking-wide uppercase">Instructor Mode</span>
@@ -123,7 +142,6 @@ export default function InstructorDashboard() {
               Home
             </button>
 
-            {/* Link chữ trơn đồng bộ Admin */}
             <Link to="/instructor/profile" className="text-sm font-medium text-blue-200 hover:text-white transition">
               Instructor Profile
             </Link>
@@ -148,7 +166,6 @@ export default function InstructorDashboard() {
           </p>
         </div>
 
-        {/* 🌟 CẬP NHẬT GRID: Chỉ còn 2 ô điều hướng nhanh (Đã chia grid-cols-2 trên màn hình md để giao diện cân đối) */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8 text-xs">
           {/* Ô 1: REVIEW REQUESTS */}
           <div className="bg-white border border-gray-200 rounded-2xl p-5 shadow-sm hover:shadow-md transition flex flex-col justify-between min-h-[140px]">
@@ -216,14 +233,14 @@ export default function InstructorDashboard() {
           <div className="lg:col-span-2 space-y-4">
             <div className="bg-white rounded-3xl border border-gray-200 shadow-sm overflow-hidden">
               <div className="p-4 bg-gray-50 border-b border-gray-100 flex justify-between items-center">
-                <span className="text-xs font-black text-gray-500 uppercase tracking-wider">Monitored Repositories ({totalElements})</span>
+                <span className="text-xs font-black text-gray-500 uppercase tracking-wider">Assigned Repositories ({totalElements})</span>
               </div>
               
               <div className="divide-y divide-gray-100">
                 {loading ? (
                   <div className="p-8 text-center text-gray-400 text-xs font-semibold animate-pulse">Fetching telemetry stream...</div>
                 ) : projects.length === 0 ? (
-                  <div className="p-8 text-center text-gray-400 text-xs font-semibold">No active project structures found.</div>
+                  <div className="p-8 text-center text-gray-400 text-xs font-semibold">No assigned category structures found for your account.</div>
                 ) : (
                   projects.map((project) => (
                     <div 
@@ -276,7 +293,7 @@ export default function InstructorDashboard() {
             {!selectedProject ? (
               <div className="h-full flex flex-col items-center justify-center text-center p-8 text-gray-400 my-auto">
                 <span className="text-3xl block mb-2">🔬</span>
-                <p className="text-xs font-semibold">Select a student workspace repository timeline on the left map layout to trigger deep paper inspection.</p>
+                <p className="text-xs font-semibold">Select an assigned workspace repository timeline on the left map layout to trigger deep paper inspection.</p>
               </div>
             ) : (
               <div className="space-y-6 animate-fadeIn">
