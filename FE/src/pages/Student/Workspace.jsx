@@ -62,7 +62,6 @@ export default function Workspace() {
   const { language, toggleLanguage } = useLanguage();
   const [activeTab, setActiveTab] = useState('Source');
   const [editorMode, setEditorMode] = useState('Code');
-  const [showHistoryModal, setShowHistoryModal] = useState(false);
 
   const [toastMessage, setToastMessage] = useState('');
   const [showSubmitReviewModal, setShowSubmitReviewModal] = useState(false);
@@ -92,8 +91,7 @@ export default function Workspace() {
   const [isUploading, setIsUploading] = useState(false);
   const [viewerFile, setViewerFile] = useState(null);
   const [currentUser, setCurrentUser] = useState(null);
-  const [paperVersionsList, setPaperVersionsList] = useState([]);
-  const [previewingVersion, setPreviewingVersion] = useState(null);
+
   const [showAiReviewModal, setShowAiReviewModal] = useState(false);
   const [loadingAiReview, setLoadingAiReview] = useState(false);
   const [aiReviewResult, setAiReviewResult] = useState(null);
@@ -218,20 +216,7 @@ export default function Workspace() {
   const [editingClaim, setEditingClaim] = useState(null);
   const [editClaimContent, setEditClaimContent] = useState('');
 
-  const displayContent = previewingVersion
-    ? previewingVersion.content
-    : (selectedPaper ? codeContent : DEFAULT_SAMPLE_LATEX);
-
-  // Tải danh sách lịch sử phiên bản của bài báo
-  const loadPaperVersions = async () => {
-    if (!selectedPaper) return;
-    try {
-      const res = await api.get(`/api/papers/${selectedPaper.id}/versions`);
-      setPaperVersionsList(res.data || []);
-    } catch (err) {
-      console.error('Failed to load paper versions', err);
-    }
-  };
+  const displayContent = selectedPaper ? codeContent : DEFAULT_SAMPLE_LATEX;
 
   // Đồng bộ hóa luận điểm trực tiếp từ mã nguồn LaTeX
   const syncClaimsFromCode = async (code, projId) => {
@@ -356,11 +341,7 @@ export default function Workspace() {
     }
   };
 
-  useEffect(() => {
-    if (showHistoryModal && selectedPaper) {
-      loadPaperVersions();
-    }
-  }, [showHistoryModal, selectedPaper]);
+
 
   // 1. Tải thông tin người dùng hiện tại và danh sách giảng viên
   useEffect(() => {
@@ -1209,17 +1190,7 @@ export default function Workspace() {
       // 2. Tự động đồng bộ các luận điểm và đối chiếu AI
       await syncClaimsFromCode(codeContent, project.id);
 
-      // 3. Tự động tạo một phiên bản lưu vết trong Lịch sử phiên bản
-      const timestamp = new Date().toLocaleTimeString('vi-VN');
-      await api.post(`/api/papers/${selectedPaper.id}/versions`, {
-        versionName: `Biên dịch tự động lúc ${timestamp}`,
-        content: codeContent
-      });
-
-      // 4. Nếu đang mở modal lịch sử phiên bản, tải lại danh sách phiên bản
-      await loadPaperVersions();
-
-      showToast('Đã biên dịch, lưu tài liệu và ghi vào Lịch sử!');
+      showToast('Đã biên dịch và lưu tài liệu thành công!');
     } catch (err) {
       console.error('Failed to compile and auto-save version', err);
       showToast('Lỗi khi biên dịch và lưu phiên bản!');
@@ -1695,14 +1666,6 @@ export default function Workspace() {
               </span>
             </div>
           )}
-          <button
-            onClick={() => setShowHistoryModal(true)}
-            className="flex items-center gap-1.5 text-xs font-semibold text-slate-600 hover:text-slate-900 border border-slate-200 px-3 py-1.5 rounded-lg hover:bg-slate-50 transition-all shadow-sm ml-2">
-            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            {UI_TEXT[language].history}
-          </button>
 
           <button
             onClick={() => navigate('/student/projects')}
@@ -1746,15 +1709,6 @@ export default function Workspace() {
               <span className="absolute left-14 bg-slate-800 text-white text-[10px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-30 shadow-md">{UI_TEXT[language].fileTree}</span>
             </button>
 
-            {/* Version History Toggle */}
-            <button
-              onClick={() => setShowHistoryModal(true)}
-              className="w-10 h-10 rounded-lg flex items-center justify-center text-slate-400 hover:text-white hover:bg-slate-900 transition-colors group relative"
-              title={UI_TEXT[language].versionHistory}
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-              <span className="absolute left-14 bg-slate-800 text-white text-[10px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-30 shadow-md">{UI_TEXT[language].versionHistory}</span>
-            </button>
 
             {/* AI Assistant drawer toggle */}
             <button
@@ -1996,32 +1950,7 @@ export default function Workspace() {
               </div>
             </div>
 
-            {/* Chế độ Xem lại Phiên bản Lịch sử */}
-            {previewingVersion && (
-              <div className="bg-amber-500 text-white px-4 py-2 flex justify-between items-center text-xs font-bold shrink-0 shadow-md">
-                <span className="flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-white animate-pulse"></span>
-                  {UI_TEXT[language].reviewModeActive} <span className="underline">{previewingVersion.versionName}</span> {UI_TEXT[language].readOnlyText}
-                </span>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => {
-                      handleRestoreVersion(previewingVersion);
-                      setPreviewingVersion(null);
-                    }}
-                    className="bg-white text-indigo-700 hover:bg-slate-50 px-2.5 py-1 rounded shadow-sm text-[10px] font-bold cursor-pointer"
-                  >
-                    {UI_TEXT[language].restoreThisVersion}
-                  </button>
-                  <button
-                    onClick={() => setPreviewingVersion(null)}
-                    className="bg-slate-900/40 hover:bg-slate-900/60 text-white px-2.5 py-1 rounded text-[10px] font-bold cursor-pointer"
-                  >
-                    {UI_TEXT[language].exitReviewMode}
-                  </button>
-                </div>
-              </div>
-            )}
+
 
             {/* LaTeX Text Formatting & Advanced Utility Toolbar */}
             <div className="bg-slate-50 border-b border-slate-200 flex flex-col shrink-0 select-none">
@@ -3048,120 +2977,7 @@ export default function Workspace() {
     </aside>
       </div>
 
-    {/* HISTORY MODAL */ }
-  {
-    showHistoryModal && (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm animate-in fade-in duration-200">
-        <div className="bg-white rounded-xl shadow-2xl w-full max-w-md p-6 transform transition-all">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-lg font-bold text-slate-800">{UI_TEXT[language].historyModalTitle}</h2>
-            <button onClick={() => setShowHistoryModal(false)} className="text-slate-400 hover:text-slate-600 transition-colors">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
-            </button>
-          </div>
-          <div className="space-y-3 max-h-[400px] overflow-y-auto pr-1">
-            {/* Lưu phiên bản hiện tại */}
-            <div className="flex gap-2 mb-4 bg-slate-50 p-2.5 rounded-lg border border-slate-200">
-              <input
-                id="new-version-name"
-                type="text"
-                placeholder={UI_TEXT[language].savePlaceholder}
-                className="flex-1 text-xs border border-slate-350 rounded px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-indigo-500 bg-white"
-              />
-              <button
-                onClick={async () => {
-                  const input = document.getElementById('new-version-name');
-                  const label = input ? input.value.trim() : '';
-                  if (!label) {
-                    alert('Vui lòng nhập tên phiên bản để lưu.');
-                    return;
-                  }
-                  if (!selectedPaper) return;
-                  try {
-                    await api.post(`/api/papers/${selectedPaper.id}/versions`, {
-                      versionName: label,
-                      description: 'Được lưu thủ công bởi sinh viên.',
-                      content: codeContent
-                    });
-                    if (input) input.value = '';
-                    showToast('Đã lưu phiên bản thành công!');
-                    loadPaperVersions();
-                  } catch (e) {
-                    showToast('Lưu phiên bản thất bại');
-                  }
-                }}
-                className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-3 py-1.5 rounded-md transition-all shadow-sm"
-              >
-                Lưu
-              </button>
-            </div>
 
-            {/* Phiên bản hiện tại đang soạn thảo */}
-            <div className="flex justify-between items-center p-3 bg-indigo-50 border border-indigo-100 rounded-lg shrink-0">
-              <div>
-                <p className="text-sm font-bold text-slate-800">{UI_TEXT[language].currentDraftLabel}</p>
-                <p className="text-xs text-slate-500 mt-0.5">{UI_TEXT[language].realtimeText}</p>
-              </div>
-              <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-600 bg-indigo-100 px-2 py-1 rounded">{UI_TEXT[language].activeLabel}</span>
-            </div>
-
-            {/* Danh sách các phiên bản đã lưu */}
-            {paperVersionsList.length === 0 ? (
-              <div className="text-xs text-slate-400 italic text-center py-4">{UI_TEXT[language].noHistory}</div>
-            ) : (
-              paperVersionsList.map(ver => {
-                // Phân loại phiên bản bằng nhãn màu sắc
-                const isAuto = ver.versionName.startsWith('[Tự động]');
-                const isSystem = ver.versionName.includes('Initial Draft') || ver.versionName.includes('ban đầu') || ver.versionName.includes('bản mẫu') || ver.versionName.includes('Bản khởi tạo') || ver.versionName.includes('Bản bổ sung');
-                
-                let badgeClass = "bg-green-50 text-green-700 border-green-200";
-                let badgeText = UI_TEXT[language].badgeManual;
-                if (isAuto) {
-                  badgeClass = "bg-amber-50 text-amber-700 border-amber-200";
-                  badgeText = UI_TEXT[language].badgeAuto;
-                } else if (isSystem) {
-                  badgeClass = "bg-sky-50 text-sky-700 border-sky-200";
-                  badgeText = UI_TEXT[language].badgeSystem;
-                }
-
-                return (
-                  <div key={ver.id} className="flex justify-between items-center p-3 bg-white border border-slate-200 rounded-lg hover:border-slate-300 transition-all">
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded border ${badgeClass}`}>
-                          {badgeText}
-                        </span>
-                        <p className="text-xs font-bold text-slate-800">{ver.versionName.replace('[Tự động] ', '')}</p>
-                      </div>
-                      <p className="text-[10px] text-slate-400 mt-1">{ver.description}</p>
-                      <p className="text-[10px] text-slate-500 mt-1 font-mono">{new Date(ver.createdAt).toLocaleString()}</p>
-                    </div>
-                    <div className="flex gap-1.5 shrink-0 ml-4">
-                      <button
-                        onClick={() => {
-                          setPreviewingVersion(ver);
-                          setShowHistoryModal(false);
-                        }}
-                        className="text-xs text-slate-650 hover:text-slate-800 font-bold hover:bg-slate-100 px-2.5 py-1 border border-slate-200 rounded transition-all cursor-pointer"
-                      >
-                        Xem lại
-                      </button>
-                      <button
-                        onClick={() => handleRestoreVersion(ver)}
-                        className="text-xs text-indigo-600 hover:text-indigo-800 font-bold hover:bg-indigo-50 px-2.5 py-1 border border-indigo-100 rounded transition-all cursor-pointer"
-                      >
-                        Khôi phục
-                      </button>
-                    </div>
-                  </div>
-                );
-              })
-            )}
-          </div>
-        </div>
-      </div>
-    )
-  }
 
 
 
