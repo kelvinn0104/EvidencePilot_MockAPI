@@ -15,6 +15,7 @@ export default function Profile() {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [age, setAge] = useState("");
+  const [email, setEmail] = useState(""); // 🌟 Thêm state Email để binding vào ô Input
   const [message, setMessage] = useState({ type: "", text: "" });
 
   // Tự động quét URL để xác định phân hệ đang truy cập
@@ -32,6 +33,7 @@ export default function Profile() {
         setFirstName(data.firstName || "");
         setLastName(data.lastName || "");
         setAge(data.age || "");
+        setEmail(data.email || ""); // 🌟 Đọc email từ API đổ vào Form
       }
     } catch (error) {
       console.error("Lỗi truy xuất dữ liệu profile:", error);
@@ -48,6 +50,11 @@ export default function Profile() {
       setMessage({ type: "error", text: "First name cannot be blank." });
       return;
     }
+    // Validate thêm email không được để trống
+    if (!email.trim()) {
+      setMessage({ type: "error", text: "Email cannot be blank." });
+      return;
+    }
 
     setSubmitting(true);
     setMessage({ type: "", text: "" });
@@ -56,7 +63,8 @@ export default function Profile() {
       const payload = {
         firstName: firstName.trim(),
         lastName: lastName.trim(),
-        age: parseInt(age) || null
+        age: parseInt(age) || null,
+        email: email.trim() // 🌟 Gửi kèm email mới lên backend để update
       };
 
       const response = await api.put('/api/users/me', payload);
@@ -194,6 +202,15 @@ export default function Profile() {
                   </div>
                 </div>
 
+                {/* 🌟 Ô EMAIL đưa lên form chính và có thể nhập để cập nhật */}
+                <div className="space-y-1.5">
+                  <label className="text-gray-500 font-black uppercase tracking-wide text-[10px]">Email</label>
+                  <input 
+                    type="email" value={email} onChange={(e) => setEmail(e.target.value)}
+                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl font-medium text-gray-800 focus:outline-none focus:ring-2 focus:ring-[#1e3a8a]"
+                  />
+                </div>
+
                 <div className="space-y-1.5">
                   <label className="text-gray-500 font-black uppercase tracking-wide text-[10px]">Age</label>
                   <input 
@@ -217,12 +234,9 @@ export default function Profile() {
               </form>
             </div>
 
+            {/* Bảng dưới cùng chỉ giữ lại ô hiển thị Role tĩnh */}
             <div className="bg-white rounded-3xl border border-gray-200 shadow-sm p-8 space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
-                <div className="bg-gray-50/70 border border-gray-100 p-3 rounded-xl">
-                  <span className="block text-gray-400 font-black uppercase text-[9px] tracking-wide">Primary Email Endpoint</span>
-                  <span className="font-medium text-gray-600 font-mono text-[11px] block mt-1">{user?.email}</span>
-                </div>
+              <div className="grid grid-cols-1 gap-4 text-xs">
                 <div className="bg-gray-50/70 border border-gray-100 p-3 rounded-xl">
                   <span className="block text-gray-400 font-black uppercase text-[9px] tracking-wide">Assigned Scope Role</span>
                   <span className="font-mono text-gray-600 block mt-1 text-[11px] font-bold">{currentRole}</span>
@@ -230,8 +244,8 @@ export default function Profile() {
               </div>
             </div>
           </div>
-        </div>
 
+        </div>
       </div>
     </div>
   );

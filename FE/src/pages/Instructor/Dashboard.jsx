@@ -35,7 +35,6 @@ export default function InstructorDashboard() {
       if (statusFilter) url += `&status=${statusFilter}`;
 
       const response = await api.get(url);
-      // handles array of projects directly returned by mockApi.js or paged content
       const data = response.data;
       if (Array.isArray(data)) {
         setProjects(data);
@@ -100,7 +99,7 @@ export default function InstructorDashboard() {
   return (
     <div className="min-h-screen bg-[#f8fafc] text-[#0f172a] font-sans">
       
-      {/* Header (Màu Xanh Navy đậm giống trang Home và Dashboard cũ) */}
+      {/* HEADER ĐỒNG BỘ Y CHANG ADMIN */}
       <header className="bg-[#1e3a8a] text-white border-b border-[#152e75] sticky top-0 z-10 shadow-sm">
         <div className="w-full px-8 h-16 flex items-center justify-between">
           <div
@@ -111,16 +110,24 @@ export default function InstructorDashboard() {
             <span className="font-bold text-xl tracking-wider">Evidence Pilot</span>
           </div>
           <div className="flex items-center space-x-6">
+            {/* Tag Badge Mode */}
             <div className="flex items-center space-x-2 bg-white/10 px-3 py-1.5 rounded border border-white/20">
               <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse"></div>
               <span className="text-xs font-semibold text-blue-50 tracking-wide uppercase">Instructor Mode</span>
             </div>
+            
             <button
               onClick={() => navigate('/')}
               className="text-sm font-medium text-blue-200 hover:text-white transition"
             >
               Home
             </button>
+
+            {/* Link chữ trơn đồng bộ Admin */}
+            <Link to="/instructor/profile" className="text-sm font-medium text-blue-200 hover:text-white transition">
+              Instructor Profile
+            </Link>
+            
             <button 
               onClick={() => { logout(); navigate('/'); }}
               className="text-sm font-medium text-blue-200 hover:text-white transition"
@@ -141,20 +148,9 @@ export default function InstructorDashboard() {
           </p>
         </div>
 
-        {/* 3 Ô WORKSPACE TILES ĐIỀU HƯỚNG NHANH */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8 text-xs">
-          {/* Ô 1: PROFILE */}
-          <div className="bg-white border border-gray-200 rounded-2xl p-5 shadow-sm hover:shadow-md transition flex flex-col justify-between min-h-[140px]">
-            <div className="space-y-1.5">
-              <h3 className="text-sm font-black text-[#1e3a8a] flex items-center gap-1.5">👤 Instructor Profile</h3>
-              <p className="text-gray-400 font-medium leading-relaxed">View your personal account details, manage academic credentials, and configure preferences.</p>
-            </div>
-            <div className="pt-2">
-              <Link to="/instructor/profile" className="text-blue-600 font-bold hover:underline">Go to Profile →</Link>
-            </div>
-          </div>
-
-          {/* Ô 2: REVIEW REQUESTS */}
+        {/* 🌟 CẬP NHẬT GRID: Chỉ còn 2 ô điều hướng nhanh (Đã chia grid-cols-2 trên màn hình md để giao diện cân đối) */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8 text-xs">
+          {/* Ô 1: REVIEW REQUESTS */}
           <div className="bg-white border border-gray-200 rounded-2xl p-5 shadow-sm hover:shadow-md transition flex flex-col justify-between min-h-[140px]">
             <div className="space-y-1.5">
               <h3 className="text-sm font-black text-[#1e3a8a] flex items-center gap-1.5">📋 Review Requests</h3>
@@ -165,7 +161,7 @@ export default function InstructorDashboard() {
             </div>
           </div>
 
-          {/* Ô 3: MANAGE COLLECTIONS */}
+          {/* Ô 2: MANAGE COLLECTIONS */}
           <div className="bg-white border border-gray-200 rounded-2xl p-5 shadow-sm hover:shadow-md transition flex flex-col justify-between min-h-[140px]">
             <div className="space-y-1.5">
               <h3 className="text-sm font-black text-[#1e3a8a] flex items-center gap-1.5">📚 Manage Collections</h3>
