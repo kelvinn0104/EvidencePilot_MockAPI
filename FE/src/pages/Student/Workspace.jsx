@@ -1312,6 +1312,50 @@ export default function Workspace() {
     }
   };
 
+  const stripBalancedCommand = (text, commandName) => {
+    let result = text;
+    let index = result.indexOf(`\\${commandName}{`);
+    while (index !== -1) {
+      let openBraces = 1;
+      let i = index + commandName.length + 2;
+      while (i < result.length && openBraces > 0) {
+        if (result[i] === '{') {
+          openBraces++;
+        } else if (result[i] === '}') {
+          openBraces--;
+        }
+        i++;
+      }
+      if (openBraces === 0) {
+        result = result.substring(0, index) + result.substring(i);
+      } else {
+        result = result.substring(0, index) + result.substring(index + commandName.length + 2);
+      }
+      index = result.indexOf(`\\${commandName}{`);
+    }
+    return result;
+  };
+
+  const extractAbstractContent = (text) => {
+    const match = text.match(/\\begin\{abstract\}([\s\S]*?)\\end\{abstract\}/);
+    return match ? match[1].trim() : null;
+  };
+
+  const stripAbstractEnvironment = (text) => {
+    return text.replace(/\\begin\{abstract\}[\s\S]*?\\end\{abstract\}/g, '');
+  };
+
+  const cleanAuthorDisplay = (authorStr) => {
+    if (!authorStr) return '';
+    return authorStr
+      .replace(/\\IEEEauthorblockN\{([^}]+)\}/g, '$1')
+      .replace(/\\IEEEauthorblockA\{([^}]+)\}/g, ' ($1) ')
+      .replace(/\\and/g, ', ')
+      .replace(/[\{\}]/g, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+  };
+
   const renderPreview = () => {
     // Tách tài liệu thành các trang dựa trên lệnh \newpage hoặc \clearpage
     const pages = displayContent.split(/\\newpage|\\clearpage/);
@@ -1319,12 +1363,16 @@ export default function Workspace() {
     return pages.map((pageContent, pageIndex) => {
       const titleMatch = pageContent.match(/\\title\{([^}]+)\}/);
       const authorMatch = pageContent.match(/\\author\{([^}]+)\}/);
+      const abstractContent = extractAbstractContent(pageContent);
 
-      let body = pageContent.replace(/\\documentclass.*?\n/g, '')
+      let body = pageContent;
+      body = stripBalancedCommand(body, 'title');
+      body = stripBalancedCommand(body, 'author');
+      body = stripBalancedCommand(body, 'date');
+      body = stripAbstractEnvironment(body);
+
+      body = body.replace(/\\documentclass.*?\n/g, '')
         .replace(/\\usepackage.*?\n/g, '')
-        .replace(/\\title\{.*?\}/g, '')
-        .replace(/\\author\{.*?\}/g, '')
-        .replace(/\\date\{.*?\}/g, '')
         .replace(/\\begin\{document\}/g, '')
         .replace(/\\end\{document\}/g, '')
         .replace(/\\maketitle/g, '');
@@ -1600,7 +1648,13 @@ export default function Workspace() {
               </h1>
             )}
             {authorMatch && (
-              <p className="text-center text-sm mb-10 text-slate-600 font-serif italic">{authorMatch[1]}</p>
+              <p className="text-center text-sm mb-6 text-slate-600 font-serif italic">{cleanAuthorDisplay(authorMatch[1])}</p>
+            )}
+            {abstractContent && (
+              <div className="mb-8 px-6 py-4 bg-slate-50/50 border border-slate-100 rounded-xl font-serif text-[13px] leading-relaxed text-justify text-slate-650">
+                <span className="font-bold text-slate-800 font-sans mr-2">Abstract—</span>
+                {parseText(abstractContent)}
+              </div>
             )}
             {parsedElements}
           </div>
@@ -1618,12 +1672,16 @@ export default function Workspace() {
   const generateRichTextHtml = (latexCode) => {
     const titleMatch = latexCode.match(/\\title\{([^}]+)\}/);
     const authorMatch = latexCode.match(/\\author\{([^}]+)\}/);
+    const abstractContent = extractAbstractContent(latexCode);
 
-    let body = latexCode.replace(/\\documentclass.*?\n/g, '')
+    let body = latexCode;
+    body = stripBalancedCommand(body, 'title');
+    body = stripBalancedCommand(body, 'author');
+    body = stripBalancedCommand(body, 'date');
+    body = stripAbstractEnvironment(body);
+
+    body = body.replace(/\\documentclass.*?\n/g, '')
       .replace(/\\usepackage.*?\n/g, '')
-      .replace(/\\title\{.*?\}/g, '')
-      .replace(/\\author\{.*?\}/g, '')
-      .replace(/\\date\{.*?\}/g, '')
       .replace(/\\begin\{document\}/g, '')
       .replace(/\\end\{document\}/g, '')
       .replace(/\\maketitle/g, '');
@@ -1635,7 +1693,10 @@ export default function Workspace() {
       html += `<h1 class="text-3xl font-bold mb-2 text-slate-900">${titleMatch[1].replace(/\\\\/g, ' ')}</h1>`;
     }
     if (authorMatch) {
-      html += `<p class="text-sm text-slate-500 mb-8 italic">By ${authorMatch[1]}</p>`;
+      html += `<p class="text-sm text-slate-500 mb-6 italic">By ${cleanAuthorDisplay(authorMatch[1])}</p>`;
+    }
+    if (abstractContent) {
+      html += `<div class="mb-6 p-4 bg-slate-50 border border-slate-100 rounded-xl font-serif text-[13px] leading-relaxed text-slate-600"><strong>Abstract—</strong>${abstractContent}</div>`;
     }
 
     const parseText = (text) => {
