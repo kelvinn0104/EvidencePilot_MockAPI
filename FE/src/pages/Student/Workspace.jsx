@@ -3045,28 +3045,36 @@ export default function Workspace() {
               </div>
             )}
           {/* 3. FEEDBACK TAB (Nhận xét của Instructor) */}
-          {activeTab === 'Feedback' && (
-            <div className="flex flex-col gap-4 animate-in fade-in duration-200">
-              <div className="flex justify-between items-center mb-1 bg-white border border-slate-200 rounded-xl p-3.5 shadow-sm">
-                <div>
-                  <p className="text-[10px] text-slate-400 uppercase tracking-wider font-bold">Trạng thái bản thảo</p>
-                  <p className="text-sm font-bold text-slate-800 mt-0.5">
-                    {paperStatus === 'ACTIVE' && (language === 'vi' ? 'Đang soạn thảo (Active)' : 'Drafting (Active)')}
-                    {paperStatus === 'PENDING' && (language === 'vi' ? 'Đang chờ duyệt (In Review)' : 'Pending (In Review)')}
-                    {paperStatus === 'RETURNED' && (language === 'vi' ? 'Cần chỉnh sửa (Returned)' : 'Returned for Revision')}
-                    {paperStatus === 'REVIEWED' && (language === 'vi' ? 'Đã phê duyệt (Approved)' : 'Approved')}
-                    {paperStatus === 'REJECTED' && (language === 'vi' ? 'Bị từ chối (Rejected)' : 'Rejected')}
-                  </p>
+          {activeTab === 'Feedback' && (() => {
+            const userRoleObj = project?.members?.find(m => m.email === currentUser?.email);
+            const userRole = userRoleObj ? userRoleObj.role : (project?.ownerId === currentUser?.id ? 'PL' : '');
+            const isPL = userRole === 'PL';
+            const isAssigned = selectedPaper?.assignedTo === currentUser?.email;
+            const allowed = selectedPaper?.filename === 'main.tex' || selectedPaper?.filename === 'references.bib' ? isPL : isAssigned;
+            const paperStatus = selectedPaper ? selectedPaper.status : 'ACTIVE';
+
+            return (
+              <div className="flex flex-col gap-4 animate-in fade-in duration-200">
+                <div className="flex justify-between items-center mb-1 bg-white border border-slate-200 rounded-xl p-3.5 shadow-sm">
+                  <div>
+                    <p className="text-[10px] text-slate-400 uppercase tracking-wider font-bold">Trạng thái bản thảo</p>
+                    <p className="text-sm font-bold text-slate-800 mt-0.5">
+                      {(paperStatus === 'ACTIVE' || paperStatus === 'DRAFT') && (language === 'vi' ? 'Đang soạn thảo (Active)' : 'Drafting (Active)')}
+                      {(paperStatus === 'PENDING' || paperStatus === 'SUBMITTED') && (language === 'vi' ? 'Đang chờ duyệt (In Review)' : 'Pending (In Review)')}
+                      {paperStatus === 'RETURNED' && (language === 'vi' ? 'Cần chỉnh sửa (Returned)' : 'Returned for Revision')}
+                      {(paperStatus === 'REVIEWED' || paperStatus === 'APPROVED') && (language === 'vi' ? 'Đã phê duyệt (Approved)' : 'Approved')}
+                      {paperStatus === 'REJECTED' && (language === 'vi' ? 'Bị từ chối (Rejected)' : 'Rejected')}
+                    </p>
+                  </div>
+                  {paperStatus !== 'PENDING' && paperStatus !== 'SUBMITTED' && paperStatus !== 'APPROVED' && paperStatus !== 'REVIEWED' && allowed && (
+                    <button
+                      onClick={() => setShowSubmitReviewModal(true)}
+                      className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg shadow-sm transition-all cursor-pointer"
+                    >
+                      Gửi duyệt
+                    </button>
+                  )}
                 </div>
-                {paperStatus !== 'PENDING' && (
-                  <button
-                    onClick={() => setShowSubmitReviewModal(true)}
-                    className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg shadow-sm transition-all"
-                  >
-                    Gửi duyệt
-                  </button>
-                )}
-              </div>
 
               <h3 className="text-[11px] font-bold text-slate-400 tracking-widest uppercase flex items-center gap-2 mt-2">
                 <div className="h-px bg-slate-200 flex-1"></div> Lịch sử đánh giá <div className="h-px bg-slate-200 flex-1"></div>
@@ -3119,7 +3127,8 @@ export default function Workspace() {
                 )}
               </div>
             </div>
-          )}
+          );
+        })()}
 
           {/* 4. GRAPH TAB (Bản đồ liên kết bài viết tương tác) */}
           {activeTab === 'Graph' && (
