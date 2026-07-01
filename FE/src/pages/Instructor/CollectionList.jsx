@@ -19,6 +19,7 @@ export default function CollectionList() {
   const [editingCollection, setEditingCollection] = useState(null);
   const [editTitle, setEditTitle] = useState("");
   const [editDescription, setEditDescription] = useState("");
+  const [editPaperId, setEditPaperId] = useState(""); // 🌟 State quản lý Target Paper khi sửa
   const [editFiles, setEditFiles] = useState([]); // Mảng chứa các file MỚI chọn thêm khi sửa
   const [currentAttachedPdfs, setCurrentAttachedPdfs] = useState([]); // Mảng chứa các file CŨ (Có thể xoá bớt)
 
@@ -98,6 +99,7 @@ export default function CollectionList() {
     setEditingCollection(col);
     setEditTitle(col.title);
     setEditDescription(col.description || "");
+    setEditPaperId(col.paperId || ""); // 🌟 Gán Paper hiện tại vào form Edit
     setEditFiles([]); // Reset danh sách file mới chọn thêm
     setCurrentAttachedPdfs(allMatchedPdfs || []); // Lưu danh sách file cũ vào state để cho phép xoá bớt
     setIsEditModalOpen(true);
@@ -137,13 +139,14 @@ export default function CollectionList() {
 
     setLoading(true);
     try {
-      // 1. Cập nhật thông tin text qua API
+      // 1. Cập nhật thông tin text và paperId qua API
       await api.put(`/api/collections/${editingCollection.id}`, {
         title: editTitle.trim(),
-        description: editDescription.trim()
+        description: editDescription.trim(),
+        paperId: editPaperId || null // 🌟 Thêm gửi kèm paperId mới lên API
       });
 
-      // Cập nhật text đồng bộ trong localStorage
+      // Cập nhật text & paperId đồng bộ trong localStorage
       const localCollections = localStorage.getItem('mock_db_collections');
       if (localCollections) {
         const parsedCols = JSON.parse(localCollections);
@@ -151,6 +154,7 @@ export default function CollectionList() {
         if (matchIdx !== -1) {
           parsedCols[matchIdx].title = editTitle.trim();
           parsedCols[matchIdx].description = editDescription.trim();
+          parsedCols[matchIdx].paperId = editPaperId || null; // 🌟 Lưu lại
           localStorage.setItem('mock_db_collections', JSON.stringify(parsedCols));
         }
       }
@@ -251,7 +255,7 @@ export default function CollectionList() {
           <div className="p-4 mb-6 rounded-xl bg-rose-50 border border-rose-100 text-rose-700 text-xs font-bold">⚠️ {errorMessage}</div>
         )}
 
-        {/* 🌟 THANH CATEGORY TAB: ĐÃ CHUYỂN THÀNH THANH TAB BẤM NGANG CỦA GIT CŨ */}
+        {/* THANH CATEGORY TAB */}
         <div className="flex items-center space-x-3 mb-6 bg-white p-2.5 rounded-2xl border border-gray-200 shadow-sm overflow-x-auto">
           <span className="text-xs font-black text-gray-400 uppercase tracking-wider pl-2 shrink-0">Category Tab:</span>
           <div className="flex items-center space-x-1.5">
@@ -382,6 +386,23 @@ export default function CollectionList() {
                     onChange={(e) => setEditTitle(e.target.value)}
                     className="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl font-medium text-gray-800 focus:outline-none focus:ring-2 focus:ring-[#1e3a8a] focus:bg-white transition"
                   />
+                </div>
+
+                {/* 🌟 THÀNH PHẦN MỚI TÍCH HỢP: CHỌN TARGET PAPER KHI EDIT */}
+                <div className="space-y-1">
+                  <label className="text-[10px] font-black text-gray-500 uppercase tracking-wide">Target Paper Map</label>
+                  <select
+                    value={editPaperId}
+                    onChange={(e) => setEditPaperId(e.target.value)}
+                    className="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl font-bold text-gray-800 focus:outline-none focus:ring-2 focus:ring-[#1e3a8a] focus:bg-white transition"
+                  >
+                    <option value="">All Papers (Global Bound)</option>
+                    {papers.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        📄 {p.name || p.filename}
+                      </option>
+                    ))}
+                  </select>
                 </div>
 
                 <div className="space-y-1">
