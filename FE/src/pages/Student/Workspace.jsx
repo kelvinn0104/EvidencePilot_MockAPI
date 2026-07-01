@@ -109,6 +109,7 @@ export default function Workspace() {
   const [rightDrawerWidth, setRightDrawerWidth] = useState(380); // pixels
   const [sharedCollections, setSharedCollections] = useState([]);
   const [sharedDocuments, setSharedDocuments] = useState([]);
+  const [docSearchQuery, setDocSearchQuery] = useState('');
 
   const updateCode = (newVal) => {
     setCodeContent(newVal);
@@ -2532,19 +2533,59 @@ export default function Workspace() {
                   <span className="text-sm font-semibold text-indigo-700">{isUploading ? UI_TEXT[language].uploadingText : UI_TEXT[language].uploadBtn}</span>
                 </label>
 
+                {/* Thanh tìm kiếm tài liệu */}
+                <div className="mb-4 relative">
+                  <input
+                    type="text"
+                    placeholder="Tìm kiếm tài liệu..."
+                    value={docSearchQuery}
+                    onChange={(e) => setDocSearchQuery(e.target.value)}
+                    className="w-full text-xs bg-slate-50 hover:bg-slate-100/50 border border-slate-200 rounded-xl px-9 py-2.5 outline-none focus:bg-white focus:border-indigo-500 transition-all font-medium text-slate-800"
+                  />
+                  <svg className="w-3.5 h-3.5 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                  {docSearchQuery && (
+                    <button
+                      onClick={() => setDocSearchQuery('')}
+                      className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-650 transition-colors font-bold text-xs"
+                      type="button"
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
+
                 <div>
                   <h3 className="text-[11px] font-bold text-slate-400 tracking-widest mb-3 uppercase flex items-center gap-2">
                     <div className="h-px bg-slate-200 flex-1"></div> {UI_TEXT[language].sharedResources} <div className="h-px bg-slate-200 flex-1"></div>
                   </h3>
                   {(() => {
-                    const filteredCollections = sharedCollections.filter(col => !col.paperId || String(col.paperId) === String(selectedPaper?.id));
+                    const filteredCollections = sharedCollections
+                      .filter(col => !col.paperId || String(col.paperId) === String(selectedPaper?.id))
+                      .filter(col => {
+                        if (!docSearchQuery) return true;
+                        const query = docSearchQuery.toLowerCase();
+                        const matchCol = col.title.toLowerCase().includes(query) || (col.description && col.description.toLowerCase().includes(query));
+                        const colDocs = sharedDocuments.filter(doc => doc.collectionId === col.id);
+                        const matchDocs = colDocs.some(doc => doc.name.toLowerCase().includes(query) || (doc.description && doc.description.toLowerCase().includes(query)));
+                        return matchCol || matchDocs;
+                      });
                     return filteredCollections.length === 0 ? (
                       <div className="text-xs text-slate-400 italic text-center py-4 bg-slate-50 rounded-xl border border-dashed border-slate-200 w-full">
-                        Chưa có tài liệu chia sẻ từ giảng viên cho bản thảo này.
+                        Không tìm thấy tài liệu chia sẻ phù hợp.
                       </div>
                     ) : (
                       filteredCollections.map(col => {
-                        const colDocs = sharedDocuments.filter(doc => doc.collectionId === col.id);
+                        const colDocs = sharedDocuments
+                          .filter(doc => doc.collectionId === col.id)
+                          .filter(doc => {
+                            if (!docSearchQuery) return true;
+                            const query = docSearchQuery.toLowerCase();
+                            const matchDoc = doc.name.toLowerCase().includes(query) || (doc.description && doc.description.toLowerCase().includes(query));
+                            const matchCol = col.title.toLowerCase().includes(query);
+                            return matchDoc || matchCol;
+                          });
                         return (
                           <div key={col.id} className="bg-white border border-slate-200 rounded-xl shadow-sm mb-3 hover:border-indigo-300 hover:shadow-md transition-all overflow-hidden group">
                             <div className="p-3.5 border-b border-slate-100 flex justify-between items-start bg-slate-50/50">
@@ -2587,9 +2628,16 @@ export default function Workspace() {
                   </h3>
                   <div className="flex flex-col gap-3">
                     {(() => {
-                      const filteredSources = sources.filter(src => !src.paperId || String(src.paperId) === String(selectedPaper?.id));
+                      const filteredSources = sources
+                        .filter(src => !src.paperId || String(src.paperId) === String(selectedPaper?.id))
+                        .filter(src => {
+                          if (!docSearchQuery) return true;
+                          const query = docSearchQuery.toLowerCase();
+                          const filename = src.originalFilename || src.filename || src.name || "document.pdf";
+                          return filename.toLowerCase().includes(query);
+                        });
                       return filteredSources.length === 0 ? (
-                        <div className="text-sm text-slate-500 italic text-center p-4 w-full">{UI_TEXT[language].noUploadedSources}</div>
+                        <div className="text-sm text-slate-500 italic text-center p-4 w-full">Không tìm thấy tài liệu tải lên phù hợp.</div>
                       ) : (
                         filteredSources.map(src => (
                           <div key={src.id} onClick={() => setViewerFile({
