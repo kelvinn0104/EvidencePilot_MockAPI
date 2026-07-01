@@ -7,54 +7,60 @@ export default function CreateCollection() {
   
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [projectId, setProjectId] = useState(""); 
+  
   // Quản lý mảng lưu danh sách nhiều file được chọn
   const [attachedFiles, setAttachedFiles] = useState([]);
 
-  const [projects, setProjects] = useState([]);
-  const [papers, setPapers] = useState([]);
-  const [paperId, setPaperId] = useState("");
+  // Thay thế state projects/papers cũ bằng categories đồng bộ phân quyền từ Admin
+  const [categories, setCategories] = useState([]);
+  const [selectedCategoryIds, setSelectedCategoryIds] = useState([]); // Mảng lưu các Category được tích chọn
+
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
 
+  // Tải danh sách Category dựa trên cấu trúc phân quyền gán từ Admin (Đồng bộ với CollectionList)
   useEffect(() => {
-    const fetchPapers = async () => {
-      if (!projectId) return;
-      try {
-        const res = await api.get(`/api/papers/by-project/${projectId}`);
-        const paperList = res.data || [];
-        setPapers(paperList);
-        if (paperList.length > 0) {
-          setPaperId(paperList[0].id);
-        } else {
-          setPaperId("");
-        }
-      } catch (err) {
-        console.error("Lỗi lấy danh sách bản thảo:", err);
-      }
-    };
-    fetchPapers();
-  }, [projectId]);
-
-  useEffect(() => {
-    const fetchActiveProjects = async () => {
+    const fetchActiveCategories = async () => {
       setLoading(true);
       try {
-        const response = await api.get('/api/projects');
-        const projectList = Array.isArray(response.data) ? response.data : response.data.content || [];
-        setProjects(projectList);
-        if (projectList.length > 0) {
-          setProjectId(projectList[0].id);
+        // 1. Lấy thông tin Giảng viên hiện tại và ép kiểu về Number
+        const userRes = await api.get('/api/users/me');
+        const currentInstructorId = Number(userRes.data?.id);
+
+        if (!currentInstructorId) {
+          console.error("Không tìm thấy ID của Instructor.");
+          setErrorMessage("Instructor identification failed.");
+          return;
         }
+
+        // 2. Lấy danh sách toàn bộ dự án từ hệ thống
+        const response = await api.get('/api/projects');
+        const rawProjects = Array.isArray(response.data) ? response.data : response.data.content || [];
+        
+        // 3. Lọc chính xác các Category (Project) mà giảng viên này được gán quyền quản lý
+        const filtered = rawProjects.filter(project => {
+          if (project.instructorIds && Array.isArray(project.instructorIds)) {
+            return project.instructorIds.map(id => Number(id)).includes(currentInstructorId);
+          }
+          if (project.instructorId) {
+            return Number(project.instructorId) === currentInstructorId;
+          }
+          if (project.instructor?.id) {
+            return Number(project.instructor.id) === currentInstructorId;
+          }
+          return false;
+        });
+
+        setCategories(filtered);
       } catch (error) {
         console.error("Error loading project mapping:", error);
-        setErrorMessage("Failed to load project reference keys.");
+        setErrorMessage("Failed to load project reference keys assigned by administration.");
       } finally {
         setLoading(false);
       }
     };
-    fetchActiveProjects();
+    fetchActiveCategories();
   }, []);
 
   // Xử lý cộng dồn file khi bấm chọn nhiều lần, tránh bị file sau ghi đè file trước
@@ -87,24 +93,37 @@ export default function CreateCollection() {
     e.preventDefault();
     if (!title.trim()) return;
 
+    if (selectedCategoryIds.length === 0) {
+      setErrorMessage("Please select at least one Category for this configuration block.");
+      return;
+    }
+
     setSubmitting(true);
     setErrorMessage("");
 
     try {
-      const targetProjectId = projectId || (projects.length > 0 ? projects[0].id : "proj_101");
       const payload = {
         title: title.trim(),
         description: description.trim() || "No description provided.",
-        projectId: targetProjectId,
-        paperId: paperId || ""
+        categoryIds: selectedCategoryIds // Gửi mảng chứa các Category ID được tích chọn lên hệ thống
       };
 
       // 1. Gửi request tạo Bộ sưu tập (Collection) mới qua API
       const res = await api.post('/api/collections', payload);
       const newCollection = res.data;
 
+      // Đồng bộ đồng thời vào Mock LocalStorage DB của Collections để tránh mất data khi reload
+      const localCols = localStorage.getItem('mock_db_collections');
+      let parsedCols = localCols ? JSON.parse(localCols) : [];
+      parsedCols.push({
+        id: newCollection?.id || `col_${Date.now()}`,
+        ...payload
+      });
+      localStorage.setItem('mock_db_collections', JSON.stringify(parsedCols));
+
       // 2. Chạy vòng lặp đẩy toàn bộ danh sách files đã chọn lên hệ thống
-      if (attachedFiles.length > 0 && newCollection && newCollection.id) {
+      const targetCollectionId = newCollection?.id || parsedCols[parsedCols.length - 1].id;
+      if (attachedFiles.length > 0 && targetCollectionId) {
         const localDocs = localStorage.getItem('mock_db_referenceDocuments');
         const parsedDocs = localDocs ? JSON.parse(localDocs) : [];
 
@@ -113,7 +132,7 @@ export default function CreateCollection() {
           const generatedBlobUrl = URL.createObjectURL(file);
           
           // Gửi tuần tự từng tài liệu đơn lẻ lên API
-          await api.post(`/api/collections/${newCollection.id}/documents`, {
+          await api.post(`/api/collections/${targetCollectionId}/documents`, {
             fileName: file.name,
             fileUrl: generatedBlobUrl
           });
@@ -121,7 +140,7 @@ export default function CreateCollection() {
           // Lưu đồng bộ vào Mock LocalStorage DB tham chiếu
           parsedDocs.push({
             id: `doc_${Date.now()}_${i}`,
-            collectionId: newCollection.id,
+            collectionId: targetCollectionId,
             name: file.name,
             fileName: file.name,
             fileUrl: generatedBlobUrl
@@ -142,14 +161,14 @@ export default function CreateCollection() {
   };
 
   return (
-    <div className="min-h-screen bg-[#f8fafc] text-[#0f172a] p-8 font-sans">
+    <div className="min-h-screen bg-[#f8fafc] text-[#0f172a] p-8 font-sans text-left">
       <div className="max-w-2xl mx-auto">
         <button 
           type="button"
           onClick={() => navigate('/instructor/collections')}
           className="text-xs font-bold text-gray-400 hover:text-[#1e3a8a] transition flex items-center gap-1 mb-4"
         >
-          ← Back 
+          &larr; Back 
         </button>
 
         <div className="mb-8 border-b border-gray-200 pb-6">
@@ -158,7 +177,7 @@ export default function CreateCollection() {
         </div>
 
         {errorMessage && (
-          <div className="p-4 mb-6 rounded-2xl bg-rose-50 border border-rose-100 text-rose-700 text-xs font-bold">⚠️ {errorMessage}</div>
+          <div className="p-4 mb-6 rounded-2xl bg-rose-50 border border-rose-100 text-rose-700 text-xs font-bold">&#9888; {errorMessage}</div>
         )}
 
         <div className="bg-white rounded-3xl border border-gray-200 shadow-sm p-8">
@@ -176,22 +195,32 @@ export default function CreateCollection() {
                 <textarea rows="4" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Describe the checking rules layout context..." className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl font-medium text-gray-800 focus:outline-none focus:ring-2 focus:ring-[#1e3a8a] focus:bg-white transition" />
               </div>
 
-              <div className="space-y-1.5">
-                <label className="text-gray-500 font-black uppercase tracking-wide text-[10px]">Target Project Association Bound</label>
-                <select value={projectId} onChange={(e) => setProjectId(e.target.value)} className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#1e3a8a] focus:bg-white transition">
-                  {projects.map(p => <option key={p.id} value={p.id}>{p.title || p.name}</option>)}
-                </select>
+              {/* THAY THẾ CHỖ CHỌN PROJECT/PAPER CŨ THÀNH DANH SÁCH CHECKBOX CHỌN NHIỀU CATEGORY ĐƯỢC ADMIN GÁN */}
+              <div className="space-y-2">
+                <label className="text-gray-500 font-black uppercase tracking-wide text-[10px]">Assign to Categories (Select Multiple) <span className="text-rose-500">*</span></label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 bg-gray-50 p-4 rounded-xl border border-gray-200 max-h-44 overflow-y-auto">
+                  {categories.map(cat => (
+                    <label key={cat.id} className="flex items-center space-x-2.5 p-2 bg-white rounded-lg border border-gray-100 cursor-pointer hover:bg-gray-50/70 transition">
+                      <input 
+                        type="checkbox" 
+                        checked={selectedCategoryIds.includes(cat.id)} 
+                        onChange={() => {
+                          setSelectedCategoryIds(prev => 
+                            prev.includes(cat.id) ? prev.filter(id => id !== cat.id) : [...prev, cat.id]
+                          );
+                        }} 
+                        className="w-4 h-4 rounded text-[#1e3a8a] border-gray-300 focus:ring-0 cursor-pointer" 
+                      />
+                      <span className="text-xs font-semibold text-gray-700 truncate">{cat.title || cat.name}</span>
+                    </label>
+                  ))}
+                  {categories.length === 0 && (
+                    <p className="col-span-full text-center text-gray-400 italic py-2">No categories currently assigned to your instructor account.</p>
+                  )}
+                </div>
               </div>
 
-              <div className="space-y-1.5">
-                <label className="text-gray-500 font-black uppercase tracking-wide text-[10px]">Target Paper Draft</label>
-                <select value={paperId} onChange={(e) => setPaperId(e.target.value)} className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#1e3a8a] focus:bg-white transition">
-                  <option value="">-- Apply to All Papers in Project --</option>
-                  {papers.map(p => <option key={p.id} value={p.id}>{p.name || p.filename}</option>)}
-                </select>
-              </div>
-
-              {/* KHU VỰC CHỌN TÀI LIỆU PDF HỖ TRỢ CỘNG DỒN FILE */}
+              {/* KHU VỰC CHỌN TÀI LIỆU PDF HỖ TRỢ CỘNG DỒN FILE (GIỮ NGUYÊN BẢN CỦA BẠN) */}
               <div className="space-y-1.5 border-t border-gray-100 pt-4">
                 <label className="text-gray-500 font-black uppercase tracking-wide text-[10px] block">Initial Reference Document (Optional PDFs)</label>
                 <div className="border-2 border-dashed border-gray-200 rounded-xl p-4 bg-gray-50/50 flex items-center justify-between">
@@ -207,7 +236,6 @@ export default function CreateCollection() {
                   </div>
                   <label className="px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-gray-700 font-bold shadow-sm cursor-pointer hover:bg-gray-50">
                     Browse PDFs
-                    {/* Giữ nguyên multiple và dùng hàm handleFileChange mới để cộng dồn mảng */}
                     <input type="file" accept=".pdf" multiple onChange={handleFileChange} className="hidden" />
                   </label>
                 </div>
