@@ -1386,7 +1386,7 @@ export default function mockAdapter(config) {
       if (!req) return respond404('Không tìm thấy yêu cầu.');
 
       const feedbacks = getDB('feedbacks', []);
-      const existingFbIdx = feedbacks.findIndex(f => f.requestId === reqId && f.status === 'PENDING');
+      const existingFbIdx = feedbacks.findIndex(f => f.requestId === reqId);
       if (existingFbIdx !== -1) {
         feedbacks[existingFbIdx].content = content;
       } else {
@@ -1398,11 +1398,32 @@ export default function mockAdapter(config) {
           paperName: req.paperName || 'Unknown Paper.tex',
           instructorId: req.instructorId,
           content,
-          status: 'PENDING',
+          status: req.status === 'APPROVED' ? 'REVIEWED' : req.status,
           requestedAt: new Date().toISOString()
         });
       }
       setDB('feedbacks', feedbacks);
+
+      // Sync comment back to papers database
+      if (req.paperId) {
+        const papers = getDB('papers', []);
+        const paper = papers.find(p => String(p.id) === String(req.paperId));
+        if (paper) {
+          if (!paper.comments) paper.comments = [];
+          
+          // Clear default placeholder comments to avoid bloating
+          paper.comments = paper.comments.filter(c => c.text !== 'Yêu cầu phê duyệt đang chờ được xử lý.');
+          
+          paper.comments.push({
+            id: 'c-' + Math.random().toString(36).substr(2, 9),
+            author: 'Giảng viên',
+            text: content,
+            createdAt: new Date().toISOString()
+          });
+          setDB('papers', papers);
+        }
+      }
+
       return respond200({ message: 'Cập nhật nhận xét thành công.' });
     }
 
