@@ -2272,7 +2272,6 @@ export default function Workspace() {
                     onChange={(e) => updateCode(e.target.value)}
                     onScroll={handleScroll}
                     spellCheck={false}
-                    readOnly={previewingVersion !== null}
                     className="absolute inset-0 w-full h-full bg-transparent text-transparent caret-white resize-none outline-none z-10 m-0 border-0 font-mono text-[13px] p-5 whitespace-pre overflow-auto custom-scrollbar"
                     style={{ lineHeight: '26px' }}
                   />
@@ -2318,7 +2317,7 @@ export default function Workspace() {
             ) : (
               <RichTextEditor
                 initialHtml={generateRichTextHtml(displayContent)}
-                readOnly={previewingVersion !== null}
+                readOnly={false}
                 onHtmlChange={(target) => {
                   const newCode = parseHtmlToLatex(target);
                   updateCode(newCode);
