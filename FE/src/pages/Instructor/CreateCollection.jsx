@@ -149,7 +149,7 @@ export default function CreateCollection() {
           onClick={() => navigate('/instructor/collections')}
           className="text-xs font-bold text-gray-400 hover:text-[#1e3a8a] transition flex items-center gap-1 mb-4"
         >
-          ➔ Back to Library Index
+          ← Back 
         </button>
 
         <div className="mb-8 border-b border-gray-200 pb-6">
