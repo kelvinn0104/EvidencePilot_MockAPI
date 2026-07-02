@@ -3603,16 +3603,21 @@ export default function Workspace() {
                           return;
                         }
 
+                        // Kiểm tra email đã tồn tại trong danh sách học sinh của hệ thống chưa
+                        const exists = allStudents.some(s => s.email === email);
+                        if (!exists) {
+                          showToast(language === 'vi' 
+                            ? 'Email này chưa được đăng ký trong hệ thống!' 
+                            : 'This email is not registered in system!');
+                          return;
+                        }
+
                         const updatedMembers = [...(project.members || []), { email, role: 'RW' }];
                         try {
                           const res = await api.put(`/api/projects/${project.id}/members`, {
                             members: updatedMembers
                           });
                           setProject(res.data);
-                          
-                          // Tải lại danh sách học sinh để lấy học sinh vừa được tự động đăng ký
-                          const studentRes = await api.get('/api/users/students');
-                          setAllStudents(studentRes.data || []);
 
                           selectEl.value = "";
                           if (inputEl) inputEl.value = "";
