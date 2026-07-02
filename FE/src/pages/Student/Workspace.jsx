@@ -253,6 +253,7 @@ export default function Workspace() {
     const userRoleObj = project?.members?.find(m => m.email === currentUser.email);
     const userRole = userRoleObj ? userRoleObj.role : (project?.ownerId === currentUser.id ? 'PL' : '');
 
+    if (userRole === 'PL') return true; // Trưởng nhóm được quyền sửa mọi file
     if (paperFile.filename === 'main.tex' || paperFile.filename === 'references.bib') {
       return userRole === 'PL';
     }
@@ -1016,7 +1017,7 @@ export default function Workspace() {
     const userRole = userRoleObj ? userRoleObj.role : (project?.ownerId === currentUser?.id ? 'PL' : '');
     const isPL = userRole === 'PL';
     const isAssigned = selectedPaper?.assignedTo === currentUser?.email;
-    const allowed = selectedPaper?.filename === 'main.tex' || selectedPaper?.filename === 'references.bib' ? isPL : isAssigned;
+    const allowed = isPL || isAssigned;
     if (!allowed || selectedPaper?.status === 'APPROVED') {
       showToast('Bạn không có quyền chỉnh sửa phần này!');
       return;
@@ -1127,7 +1128,7 @@ export default function Workspace() {
     const userRole = userRoleObj ? userRoleObj.role : (project?.ownerId === currentUser?.id ? 'PL' : '');
     const isPL = userRole === 'PL';
     const isAssigned = selectedPaper?.assignedTo === currentUser?.email;
-    const allowed = selectedPaper?.filename === 'main.tex' || selectedPaper?.filename === 'references.bib' ? isPL : isAssigned;
+    const allowed = isPL || isAssigned;
     if (!allowed || selectedPaper?.status === 'APPROVED') {
       showToast('Bạn không có quyền chỉnh sửa phần này!');
       return;
@@ -1156,7 +1157,7 @@ export default function Workspace() {
     const userRole = userRoleObj ? userRoleObj.role : (project?.ownerId === currentUser?.id ? 'PL' : '');
     const isPL = userRole === 'PL';
     const isAssigned = selectedPaper?.assignedTo === currentUser?.email;
-    const allowed = selectedPaper?.filename === 'main.tex' || selectedPaper?.filename === 'references.bib' ? isPL : isAssigned;
+    const allowed = isPL || isAssigned;
     if (!allowed || selectedPaper?.status === 'APPROVED') {
       showToast('Bạn không có quyền chỉnh sửa phần này!');
       return;
@@ -1318,8 +1319,9 @@ export default function Workspace() {
       // 1. Lưu mã nguồn LaTeX hiện tại vào DB
       await api.put(`/api/papers/${selectedPaper.id}`, { content: codeContent });
       
-      // Cập nhật lại trong danh sách papers local
+      // Cập nhật lại trong danh sách papers local và selectedPaper
       setPapers(prev => prev.map(p => p.id === selectedPaper.id ? { ...p, content: codeContent, extractedText: codeContent } : p));
+      setSelectedPaper(prev => prev ? { ...prev, content: codeContent, extractedText: codeContent } : null);
       
       // 2. Tự động đồng bộ các luận điểm và đối chiếu AI
       const compiled = getCompiledLatex();
@@ -2595,7 +2597,7 @@ export default function Workspace() {
               const userRole = userRoleObj ? userRoleObj.role : (project?.ownerId === currentUser?.id ? 'PL' : '');
               const isPL = userRole === 'PL';
               const isAssigned = selectedPaper?.assignedTo === currentUser?.email;
-              const allowed = selectedPaper?.filename === 'main.tex' || selectedPaper?.filename === 'references.bib' ? isPL : isAssigned;
+              const allowed = isPL || isAssigned;
               
               if (!allowed && selectedPaper) {
                 return (
@@ -2669,7 +2671,7 @@ export default function Workspace() {
                       const userRole = userRoleObj ? userRoleObj.role : (project?.ownerId === currentUser?.id ? 'PL' : '');
                       const isPL = userRole === 'PL';
                       const isAssigned = selectedPaper?.assignedTo === currentUser?.email;
-                      const allowed = selectedPaper?.filename === 'main.tex' || selectedPaper?.filename === 'references.bib' ? isPL : isAssigned;
+                      const allowed = isPL || isAssigned;
                       if (allowed && selectedPaper?.status !== 'APPROVED') {
                         updateCode(e.target.value);
                       }
@@ -2679,7 +2681,7 @@ export default function Workspace() {
                       const userRole = userRoleObj ? userRoleObj.role : (project?.ownerId === currentUser?.id ? 'PL' : '');
                       const isPL = userRole === 'PL';
                       const isAssigned = selectedPaper?.assignedTo === currentUser?.email;
-                      const allowed = selectedPaper?.filename === 'main.tex' || selectedPaper?.filename === 'references.bib' ? isPL : isAssigned;
+                      const allowed = isPL || isAssigned;
                       return !allowed || selectedPaper?.status === 'APPROVED';
                     })()}
                     onScroll={handleScroll}
@@ -2734,7 +2736,7 @@ export default function Workspace() {
                   const userRole = userRoleObj ? userRoleObj.role : (project?.ownerId === currentUser?.id ? 'PL' : '');
                   const isPL = userRole === 'PL';
                   const isAssigned = selectedPaper?.assignedTo === currentUser?.email;
-                  const allowed = selectedPaper?.filename === 'main.tex' || selectedPaper?.filename === 'references.bib' ? isPL : isAssigned;
+                  const allowed = isPL || isAssigned;
                   return !allowed || selectedPaper?.status === 'APPROVED';
                 })()}
                 onHtmlChange={(target) => {
@@ -3220,7 +3222,7 @@ export default function Workspace() {
             const userRole = userRoleObj ? userRoleObj.role : (project?.ownerId === currentUser?.id ? 'PL' : '');
             const isPL = userRole === 'PL';
             const isAssigned = selectedPaper?.assignedTo === currentUser?.email;
-            const allowed = selectedPaper?.filename === 'main.tex' || selectedPaper?.filename === 'references.bib' ? isPL : isAssigned;
+            const allowed = isPL || isAssigned;
             const paperStatus = selectedPaper ? selectedPaper.status : 'ACTIVE';
 
             return (
