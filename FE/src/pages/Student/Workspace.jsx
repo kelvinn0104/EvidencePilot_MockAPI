@@ -2137,7 +2137,7 @@ export default function Workspace() {
                         {/* 3. Folder sections/ */}
                         <div className="mt-2">
                           <div className="flex items-center gap-1 text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mb-1.5">
-                            <span>📂 sections</span>
+                            <span>📂 {language === 'vi' ? 'đề mục' : 'sections'}</span>
                           </div>
                           <div className="pl-3 space-y-0.5 border-l border-slate-200">
                             {papers
@@ -2270,7 +2270,7 @@ export default function Workspace() {
               <div className="flex items-center gap-2 truncate">
                 <span className="text-[10px] font-bold text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded tracking-wide font-mono">LaTeX</span>
                 <span className="text-xs font-bold text-slate-700 truncate">
-                  Drafts / {selectedPaper ? selectedPaper.originalFilename : 'main.tex'}
+                  {UI_TEXT[language].editorHeader}{selectedPaper ? selectedPaper.originalFilename : 'main.tex'}
                 </span>
               </div>
               <div className="flex items-center gap-3">
@@ -2655,7 +2655,7 @@ export default function Workspace() {
                             <div className="absolute left-6 top-1/2 -translate-y-1/2 hidden group-hover/tooltip:flex flex-col bg-slate-900 border border-slate-700 text-white text-[11px] rounded-lg p-2.5 shadow-2xl z-50 pointer-events-none whitespace-normal w-56 text-left leading-normal animate-in fade-in zoom-in-95 duration-150">
                               <div className="flex items-center gap-1.5 mb-1 font-bold text-[9px] uppercase tracking-wider text-rose-400">
                                 <span className="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
-                                Lỗi cú pháp LaTeX
+                                {language === 'vi' ? 'Lỗi cú pháp LaTeX' : 'LaTeX Syntax Error'}
                               </div>
                               <span className="text-slate-200">{errorMsg}</span>
                             </div>
@@ -2789,9 +2789,9 @@ export default function Workspace() {
                 
                 {/* Syntax Error count pill */}
                 {Object.keys(getSyntaxErrors()).length > 0 && (
-                  <span className="bg-rose-100 text-rose-700 text-[10px] font-black px-1.5 py-0.5 rounded-full flex items-center gap-1 animate-pulse" title="Phát hiện lỗi cú pháp">
+                  <span className="bg-rose-100 text-rose-700 text-[10px] font-black px-1.5 py-0.5 rounded-full flex items-center gap-1 animate-pulse" title={language === 'vi' ? "Phát hiện lỗi cú pháp" : "Syntax error detected"}>
                     <span className="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
-                    {Object.keys(getSyntaxErrors()).length} lỗi
+                    {Object.keys(getSyntaxErrors()).length} {language === 'vi' ? 'lỗi' : 'error(s)'}
                   </span>
                 )}
               </div>
@@ -2970,7 +2970,7 @@ export default function Workspace() {
                 <div className="mb-4 relative">
                   <input
                     type="text"
-                    placeholder="Tìm kiếm tài liệu..."
+                    placeholder={language === 'vi' ? "Tìm kiếm tài liệu..." : "Search resources..."}
                     value={docSearchQuery}
                     onChange={(e) => setDocSearchQuery(e.target.value)}
                     className="w-full text-xs bg-slate-50 hover:bg-slate-100/50 border border-slate-200 rounded-xl px-9 py-2.5 outline-none focus:bg-white focus:border-indigo-500 transition-all font-medium text-slate-800"
@@ -3078,7 +3078,7 @@ export default function Workspace() {
                             fileName: src.originalFilename || src.filename || src.name || "document.pdf"
                           })} className="bg-white border border-slate-200 rounded-xl p-3.5 hover:shadow-md hover:border-indigo-300 transition-all cursor-pointer transform hover:-translate-y-0.5">
                             <p className="text-sm font-bold text-slate-800 flex items-center gap-2"><svg className="w-4 h-4 text-red-500" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clipRule="evenodd" /></svg>{src.originalFilename || src.filename || src.name || "document.pdf"}</p>
-                            <p className="text-xs text-slate-500 mt-1.5 line-clamp-2 leading-relaxed">Source file uploaded to this project.</p>
+                            <p className="text-xs text-slate-500 mt-1.5 line-clamp-2 leading-relaxed">{language === 'vi' ? 'Tài liệu nguồn đã tải lên dự án.' : 'Source file uploaded to this project.'}</p>
                           </div>
                         ))
                       );
@@ -3647,7 +3647,7 @@ export default function Workspace() {
               {/* Section Assignment Panel */}
               <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm text-xs">
                 <h4 className="font-extrabold text-slate-700 uppercase tracking-wider mb-3 flex items-center gap-1.5">
-                  <span>📌</span> Phân công viết phần (Sections)
+                  <span>📌</span> {language === 'vi' ? 'Phân công viết phần (Sections)' : 'Section Assignments'}
                 </h4>
                 <div className="space-y-2.5">
                   {papers
@@ -3671,7 +3671,7 @@ export default function Workspace() {
                             </span>
                           </div>
                           <div className="flex items-center justify-between text-[11px] gap-2 pt-1 border-t border-slate-100">
-                            <span className="text-slate-400 font-semibold shrink-0">Người phụ trách:</span>
+                            <span className="text-slate-400 font-semibold shrink-0">{language === 'vi' ? 'Người phụ trách:' : 'Assigned to:'}</span>
                             {isCurrentUserPL ? (
                               <select
                                 value={p.assignedTo || ""}
@@ -3683,15 +3683,17 @@ export default function Workspace() {
                                     });
                                     const paperRes = await api.get(`/api/papers/by-project/${project.id}`);
                                     setPapers(paperRes.data || []);
-                                    showToast(`Đã phân công ${p.filename.split('/').pop()} thành công.`);
+                                    showToast(language === 'vi' 
+                                      ? `Đã phân công ${p.filename.split('/').pop()} thành công.` 
+                                      : `Assigned ${p.filename.split('/').pop()} successfully.`);
                                   } catch (err) {
                                     console.error(err);
-                                    showToast('Lỗi khi phân công!');
+                                    showToast(language === 'vi' ? 'Lỗi khi phân công!' : 'Failed to assign section!');
                                   }
                                 }}
                                 className="border border-slate-200 rounded px-1.5 py-0.5 bg-white text-slate-700 text-xs w-36 truncate"
                               >
-                                <option value="">-- Chưa phân công --</option>
+                                <option value="">{language === 'vi' ? '-- Chưa phân công --' : '-- Not Assigned --'}</option>
                                 {project.members?.map(mem => {
                                   const memUser = allStudents?.find(s => s.email === mem.email) || (mem.email === 'student@evidencepilot.edu' ? currentUser : null);
                                   const memName = memUser ? `${memUser.firstName} ${memUser.lastName}` : mem.email;
@@ -3704,7 +3706,7 @@ export default function Workspace() {
                               <span className="font-medium text-slate-705 truncate w-32 text-right">
                                 {(() => {
                                   const memUser = allStudents?.find(s => s.email === p.assignedTo) || (p.assignedTo === 'student@evidencepilot.edu' ? currentUser : null);
-                                  return memUser ? `${memUser.firstName} ${memUser.lastName}` : (p.assignedTo || 'Chưa phân công');
+                                  return memUser ? `${memUser.firstName} ${memUser.lastName}` : (p.assignedTo || (language === 'vi' ? 'Chưa phân công' : 'Not Assigned'));
                                 })()}
                               </span>
                             )}

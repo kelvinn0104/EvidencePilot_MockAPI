@@ -26,7 +26,7 @@ export const UI_TEXT = {
     noSources: "Chưa có tài liệu nguồn nào",
     
     // Main Headers
-    editorHeader: "Drafts / ",
+    editorHeader: "Bản thảo / ",
     pdfHeader: "Tài liệu PDF",
     aiReview: "AI Review",
     syntaxErrors: "lỗi cú pháp",
