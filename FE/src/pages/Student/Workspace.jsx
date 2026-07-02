@@ -894,13 +894,14 @@ export default function Workspace() {
       showToast("Vui lòng mở một Bản thảo để gửi duyệt.");
       return;
     }
-    if (!selectedInstructorId) {
+    const finalInstId = selectedInstructorId || project?.instructorId?.toString() || (instructorsList[0]?.id?.toString() || '');
+    if (!finalInstId) {
       showToast("Vui lòng chọn một Giảng viên để gửi duyệt.");
       return;
     }
     try {
       await api.post(`/api/projects/${project.id}/submit-review`, {
-        instructorId: parseInt(selectedInstructorId),
+        instructorId: parseInt(finalInstId),
         paperId: selectedPaper.id
       });
       showToast("Gửi yêu cầu phê duyệt thành công!");
@@ -3831,7 +3832,7 @@ export default function Workspace() {
           <div className="mb-6">
             <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Chọn Giảng viên</label>
             <select
-              value={selectedInstructorId}
+              value={selectedInstructorId || project?.instructorId?.toString() || (instructorsList[0]?.id?.toString() || '')}
               onChange={(e) => setSelectedInstructorId(e.target.value)}
               className="w-full p-2.5 bg-white border border-slate-200 rounded-lg text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
             >
@@ -3850,7 +3851,7 @@ export default function Workspace() {
             <button onClick={() => setShowSubmitReviewModal(false)} className="px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100 rounded-lg transition-colors">Hủy</button>
             <button
               onClick={handleSubmitReview}
-              disabled={!selectedInstructorId}
+              disabled={!(selectedInstructorId || project?.instructorId?.toString() || (instructorsList[0]?.id?.toString() || ''))}
               className="px-4 py-2 text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg shadow-sm shadow-indigo-200 transition-colors disabled:opacity-50"
             >
               Gửi duyệt
