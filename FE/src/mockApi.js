@@ -48,7 +48,7 @@ export default function mockAdapter(config) {
     const initDB = () => {
       
 
-      if (!localStorage.getItem('mock_db_initialized_en_v13')) {
+      if (!localStorage.getItem('mock_db_initialized_en_v14')) {
         setDB('users', [
           { id: 1, email: 'student@evidencepilot.edu', password: '123', role: 'STUDENT', firstName: 'Nguyễn', lastName: 'Văn A', age: 21 },
           { id: 102, email: 'student2@evidencepilot.edu', password: '123', role: 'STUDENT', firstName: 'Trần', lastName: 'Văn B', age: 22 },
@@ -61,9 +61,9 @@ export default function mockAdapter(config) {
         setDB('projects', [
           { 
             id: 'proj-1', 
-            title: 'Nghiên cứu Agile & DevOps', 
-            name: 'Nghiên cứu Agile & DevOps', 
-            description: 'Dự án phân tích tính hiệu quả của Agile/Scrum kết hợp DevOps trong các doanh nghiệp khởi nghiệp.', 
+            title: 'Agile & DevOps Research in Startups', 
+            name: 'Agile & DevOps Research in Startups', 
+            description: 'An empirical study on the effectiveness of Agile/Scrum combined with DevOps in software startups.', 
             ownerId: 1, 
             status: 'ACTIVE', 
             createdAt: new Date().toISOString(),
@@ -243,7 +243,7 @@ export default function mockAdapter(config) {
           status: 'PENDING',
           requestedAt: initialRequest.requestedAt
         }]);
-        localStorage.setItem('mock_db_initialized_en_v13', 'true');
+        localStorage.setItem('mock_db_initialized_en_v14', 'true');
       }
 
       if (!localStorage.getItem('mock_db_initialized_collections_v4')) {

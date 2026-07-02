@@ -238,8 +238,8 @@ export default function Projects() {
                 </p>
                 {project.instructorId && (() => {
                   const inst = allInstructors.find(i => Number(i.id) === Number(project.instructorId));
-                  const instName = inst ? `${inst.firstName} ${inst.lastName}` : (language === 'vi' ? 'Chưa phân công' : 'Not assigned');
-                  const labelPrefix = language === 'vi' ? 'GV hướng dẫn' : 'Instructor';
+                  const instName = inst ? `${inst.firstName} ${inst.lastName}` : 'Not assigned';
+                  const labelPrefix = 'Instructor';
                   return (
                     <div className="flex items-center justify-between mb-4 text-xs bg-slate-50/50 hover:bg-slate-50 transition border border-slate-100 p-2.5 rounded-xl">
                       <div className="flex items-center gap-2">
@@ -258,9 +258,8 @@ export default function Projects() {
                         project.instructorStatus === 'REJECTED' ? 'bg-rose-50 text-rose-700 border border-rose-200' :
                         'bg-amber-50 text-amber-700 border border-amber-250'
                       }`}>
-                        {project.instructorStatus === 'ACCEPTED' ? (language === 'vi' ? 'Đã nhận' : 'Accepted') :
-                         project.instructorStatus === 'REJECTED' ? (language === 'vi' ? 'Từ chối' : 'Refused') : 
-                         (language === 'vi' ? 'Chờ phản hồi' : 'Pending')}
+                        {project.instructorStatus === 'ACCEPTED' ? 'Accepted' :
+                         project.instructorStatus === 'REJECTED' ? 'Refused' : 'Pending'}
                       </span>
                     </div>
                   );
@@ -283,8 +282,8 @@ export default function Projects() {
             {/* Header */}
             <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50 rounded-t-2xl">
               <div>
-                <h2 className="text-lg font-extrabold text-gray-800">Tạo dự án nghiên cứu mới</h2>
-                <p className="text-xs text-gray-500 mt-0.5">Thực hiện theo các bước để khởi tạo không gian làm việc</p>
+                <h2 className="text-lg font-extrabold text-gray-800">Create New Research Project</h2>
+                <p className="text-xs text-gray-500 mt-0.5">Follow the steps to initialize your research workspace.</p>
               </div>
               <button 
                 onClick={() => setShowCreateModal(false)} 
@@ -308,10 +307,10 @@ export default function Projects() {
                 ></div>
 
                 {[
-                  { step: 1, label: 'Thông tin' },
-                  { step: 2, label: 'Tài liệu nguồn' },
-                  { step: 3, label: 'Bản thảo' },
-                  { step: 4, label: 'Thành viên' }
+                  { step: 1, label: 'Details' },
+                  { step: 2, label: 'Sources' },
+                  { step: 3, label: 'Drafts' },
+                  { step: 4, label: 'Members' }
                 ].map((s) => (
                   <div key={s.step} className="flex flex-col items-center gap-1.5 bg-white px-2">
                     <div 
@@ -338,22 +337,22 @@ export default function Projects() {
               {wizardStep === 1 && (
                 <div className="space-y-4">
                   <div>
-                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Tên dự án nghiên cứu <span className="text-red-500">*</span></label>
+                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Research Project Title <span className="text-red-500">*</span></label>
                     <input
                       type="text"
                       required
                       value={newTitle}
                       onChange={(e) => setNewTitle(e.target.value)}
-                      placeholder="Ví dụ: Nghiên cứu cải tiến hiệu năng React Concurrent Rendering..."
+                      placeholder="e.g., Empirical evaluation of LLM-based code test generation..."
                       className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Mô tả tóm tắt</label>
+                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Short Description</label>
                     <textarea
                       value={newDescription}
                       onChange={(e) => setNewDescription(e.target.value)}
-                      placeholder="Mô tả mục tiêu, câu hỏi nghiên cứu (RQs) và phạm vi của đề tài..."
+                      placeholder="Describe objectives, research questions (RQs), and scope of the project..."
                       rows={4}
                       className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
                     />
@@ -364,7 +363,7 @@ export default function Projects() {
               {wizardStep === 2 && (
                 <div className="space-y-5">
                   <div>
-                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">Tải lên tài liệu tham khảo nguồn (Sources)</label>
+                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">Upload Reference Source Files (Sources)</label>
                     <div 
                       className="border-2 border-dashed border-gray-300 hover:border-indigo-500 rounded-xl p-8 text-center cursor-pointer transition bg-gray-50/50 group relative"
                       onClick={() => document.getElementById('source-upload-wizard').click()}
@@ -384,14 +383,14 @@ export default function Projects() {
                       <svg className="w-10 h-10 text-gray-400 group-hover:text-indigo-600 mx-auto mb-3 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
                       </svg>
-                      <p className="text-sm font-semibold text-gray-700">Kéo thả tài liệu vào đây hoặc click để chọn</p>
-                      <p className="text-xs text-gray-400 mt-1">Hỗ trợ PDF, DOCX, TXT. Tải lên nhiều tệp cùng lúc.</p>
+                      <p className="text-sm font-semibold text-gray-700">Drag & drop files here or click to select</p>
+                      <p className="text-xs text-gray-400 mt-1">Supports PDF, DOCX, TXT. Multi-file upload allowed.</p>
                     </div>
                   </div>
 
                   {uploadedSources.length > 0 && (
                     <div>
-                      <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-2">Tài liệu đã chọn ({uploadedSources.length})</span>
+                      <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-2">Selected Documents ({uploadedSources.length})</span>
                       <div className="space-y-2 max-h-40 overflow-y-auto custom-scrollbar">
                         {uploadedSources.map((file, idx) => (
                           <div key={idx} className="flex items-center justify-between p-2.5 bg-slate-50 border border-slate-200/80 rounded-lg text-xs">
@@ -418,7 +417,7 @@ export default function Projects() {
               {wizardStep === 3 && (
                 <div className="space-y-5">
                   <div>
-                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">Tùy chọn tạo bản thảo Paper</label>
+                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">Paper Draft Initialization Option</label>
                     <div className="grid grid-cols-2 gap-3">
                       <button
                         type="button"
@@ -430,7 +429,7 @@ export default function Projects() {
                         }`}
                       >
                         <svg className="w-6 h-6 text-indigo-505" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-                        <span className="text-xs font-semibold">Tạo mới từ Template</span>
+                        <span className="text-xs font-semibold">Create from Template</span>
                       </button>
                       <button
                         type="button"
@@ -442,19 +441,19 @@ export default function Projects() {
                         }`}
                       >
                         <svg className="w-6 h-6 text-indigo-505" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
-                        <span className="text-xs font-semibold">Tải lên tệp LaTeX (.tex)</span>
+                        <span className="text-xs font-semibold">Upload LaTeX File (.tex)</span>
                       </button>
                     </div>
                   </div>
 
                   {paperOption === 'TEMPLATE' ? (
                     <div>
-                      <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-3">Chọn Template phù hợp (Khuyên dùng)</span>
+                      <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-3">Select a Template (Recommended)</span>
                       <div className="space-y-3">
                         {[
-                          { key: 'IEEE', name: 'IEEE Conference Template (IEEEtran)', desc: 'Định dạng 2 cột, 10pt chuẩn quốc tế, phù hợp cho hầu hết hội nghị khoa học.' },
-                          { key: 'ACM', name: 'ACM Conference Template (acmart sigconf)', desc: 'Mẫu văn bản chuẩn của Hiệp hội Máy tính ACM, định dạng sigconf chuyên nghiệp.' },
-                          { key: 'SPRINGER', name: 'Springer LNCS Template (llncs)', desc: 'Mẫu định dạng 1 cột tiêu chuẩn cho chuỗi sách Lecture Notes in Computer Science.' }
+                          { key: 'IEEE', name: 'IEEE Conference Template (IEEEtran)', desc: 'Double-column, 10pt international standard format, suitable for most scientific conferences.' },
+                          { key: 'ACM', name: 'ACM Conference Template (acmart sigconf)', desc: 'ACM standard format (sigconf layout) for professional computing articles.' },
+                          { key: 'SPRINGER', name: 'Springer LNCS Template (llncs)', desc: 'Standard single-column format for LNCS series (Springer).' }
                         ].map(t => (
                           <div 
                             key={t.key}
@@ -482,7 +481,7 @@ export default function Projects() {
                     </div>
                   ) : (
                     <div>
-                      <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-3">Tải lên tệp bản thảo chính (.tex)</span>
+                      <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-3">Upload Main Document File (.tex)</span>
                       <div className="border border-dashed border-gray-300 hover:border-indigo-500 rounded-xl p-6 text-center cursor-pointer transition bg-gray-50/50" onClick={() => document.getElementById('paper-upload-wizard').click()}>
                         <input
                           id="paper-upload-wizard"
@@ -496,7 +495,7 @@ export default function Projects() {
                           }}
                         />
                         <svg className="w-8 h-8 text-gray-400 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" /></svg>
-                        <p className="text-xs font-semibold text-gray-700">Chọn tệp LaTeX của bạn (.tex)</p>
+                        <p className="text-xs font-semibold text-gray-700">Choose your LaTeX file (.tex)</p>
                       </div>
 
                       {uploadedPaperFile && (
@@ -524,7 +523,7 @@ export default function Projects() {
                 <div className="space-y-4">
                   {/* Instructor Selection */}
                   <div>
-                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Giảng viên hướng dẫn <span className="text-red-500">*</span></label>
+                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Project Instructor <span className="text-red-500">*</span></label>
                     <select
                       value={selectedInstructorId}
                       onChange={(e) => setSelectedInstructorId(e.target.value)}
@@ -540,7 +539,7 @@ export default function Projects() {
 
                   {/* Student Invitations */}
                   <div>
-                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Mời thành viên nhóm (Sinh viên)</label>
+                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Invite Team Members (Students)</label>
                     <div className="flex gap-2 mb-3">
                       <select
                         value={studentEmailInput}
@@ -552,7 +551,7 @@ export default function Projects() {
                         }}
                         className="flex-1 border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
                       >
-                        <option value="">-- Chọn sinh viên muốn mời --</option>
+                        <option value="">-- Select student to invite --</option>
                         {allStudents
                           .filter(s => !invitedEmails.includes(s.email))
                           .map(s => (
@@ -565,7 +564,7 @@ export default function Projects() {
 
                     {invitedEmails.length > 0 ? (
                       <div className="space-y-2">
-                        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Thành viên đã mời ({invitedEmails.length})</span>
+                        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Invited Members ({invitedEmails.length})</span>
                         <div className="flex flex-wrap gap-2">
                           {invitedEmails.map(email => (
                             <div key={email} className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 text-indigo-700 border border-indigo-100 rounded-full text-xs font-medium">
@@ -582,7 +581,7 @@ export default function Projects() {
                         </div>
                       </div>
                     ) : (
-                      <p className="text-xs text-gray-400 italic">Chưa có thành viên nào được mời. Bạn có thể gán thêm trong dự án sau.</p>
+                      <p className="text-xs text-gray-400 italic">No team members invited yet. You can invite them inside the workspace later.</p>
                     )}
                   </div>
                 </div>
@@ -598,7 +597,7 @@ export default function Projects() {
                     onClick={() => setWizardStep(wizardStep - 1)}
                     className="px-5 py-2.5 text-sm font-semibold text-gray-600 bg-white border border-gray-200 rounded-xl hover:bg-gray-100 hover:border-gray-300 transition shadow-sm"
                   >
-                    Quay lại
+                    Back
                   </button>
                 )}
               </div>
@@ -608,7 +607,7 @@ export default function Projects() {
                   onClick={() => setShowCreateModal(false)}
                   className="px-5 py-2.5 text-sm font-semibold text-gray-500 hover:text-gray-700 transition"
                 >
-                  Hủy bỏ
+                  Cancel
                 </button>
                 {wizardStep < 4 ? (
                   <button
@@ -617,7 +616,7 @@ export default function Projects() {
                     onClick={() => setWizardStep(wizardStep + 1)}
                     className="px-6 py-2.5 text-sm font-bold text-white bg-indigo-600 rounded-xl hover:bg-indigo-700 transition disabled:opacity-50 shadow-sm"
                   >
-                    Tiếp theo
+                    Next
                   </button>
                 ) : (
                   <button
@@ -626,7 +625,7 @@ export default function Projects() {
                     disabled={creating || !newTitle.trim()}
                     className="px-6 py-2.5 text-sm font-bold text-white bg-indigo-600 rounded-xl hover:bg-indigo-700 transition disabled:opacity-50 shadow-sm"
                   >
-                    {creating ? 'Đang khởi tạo...' : 'Hoàn tất'}
+                    {creating ? 'Initializing...' : 'Complete'}
                   </button>
                 )}
               </div>
