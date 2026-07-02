@@ -6,7 +6,7 @@ import api from '../../api.js';
 
 export default function Projects() {
   const navigate = useNavigate();
-  const { logout } = useAuth();
+  const { logout, user } = useAuth();
   const { language } = useLanguage();
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -265,9 +265,30 @@ export default function Projects() {
                   );
                 })()}
                 <div className="flex items-center justify-between text-xs text-gray-400 pt-3 border-t border-gray-100">
-                  <span>Created {project.createdAt ? new Date(project.createdAt).toLocaleDateString() : 'N/A'}</span>
+                  <div className="flex items-center gap-2">
+                    <span>Created {project.createdAt ? new Date(project.createdAt).toLocaleDateString() : 'N/A'}</span>
+                    {project.ownerId === user?.id && (
+                      <button
+                        onClick={async (e) => {
+                          e.stopPropagation();
+                          if (window.confirm(language === 'vi' ? `Bạn có chắc chắn muốn xóa dự án "${project.title}"?` : `Are you sure you want to delete project "${project.title}"?`)) {
+                            try {
+                              await api.delete(`/api/projects/${project.id}`);
+                              fetchProjects();
+                            } catch (err) {
+                              console.error(err);
+                            }
+                          }
+                        }}
+                        className="p-1 text-slate-400 hover:text-rose-600 rounded hover:bg-rose-50 transition-colors cursor-pointer"
+                        title={language === 'vi' ? 'Xóa dự án' : 'Delete Project'}
+                      >
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                      </button>
+                    )}
+                  </div>
                   <span className="text-indigo-600 font-semibold group-hover:translate-x-1 transition-transform">
-                    Open &rarr;
+                    {language === 'vi' ? 'Mở' : 'Open'} &rarr;
                   </span>
                 </div>
               </div>
