@@ -378,6 +378,16 @@ export default function Workspace() {
     if (projectId) {
       if (claims.length === 0) {
         showToast(language === 'vi' ? "Vui lòng nhập ít nhất một luận điểm trước khi chạy phân tích AI." : "Please enter at least one claim before running AI analysis.");
+        setTimeout(() => {
+          const inputEl = document.getElementById('new-claim-input');
+          if (inputEl) {
+            inputEl.focus();
+            inputEl.classList.add('border-rose-500', 'ring-2', 'ring-rose-200');
+            setTimeout(() => {
+              inputEl.classList.remove('border-rose-500', 'ring-2', 'ring-rose-200');
+            }, 2000);
+          }
+        }, 100);
         return;
       }
 
@@ -3102,6 +3112,7 @@ export default function Workspace() {
                 <div className="bg-white border border-slate-200 rounded-xl p-3 shadow-sm flex gap-2">
                   <input
                     type="text"
+                    id="new-claim-input"
                     value={newClaimContent}
                     onChange={(e) => setNewClaimContent(e.target.value)}
                     placeholder={UI_TEXT[language].addClaimPlaceholder}
