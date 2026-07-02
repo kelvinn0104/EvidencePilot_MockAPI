@@ -231,6 +231,21 @@ export default function Projects() {
                 <p className="text-sm text-gray-500 line-clamp-2 mb-4 min-h-[2.5rem]">
                   {project.description || 'No description provided.'}
                 </p>
+                {project.instructorId && (
+                  <div className="flex items-center justify-between mb-4 text-xs bg-gray-50/50 p-2.5 rounded-xl border border-gray-105">
+                    <span className="text-gray-600 font-semibold flex items-center gap-1">
+                      👨‍🏫 GV: {allInstructors.find(i => Number(i.id) === Number(project.instructorId))?.lastName || 'Giảng viên'}
+                    </span>
+                    <span className={`text-[9px] px-2 py-0.5 rounded-full font-black uppercase tracking-wider ${
+                      project.instructorStatus === 'ACCEPTED' ? 'bg-emerald-100 text-emerald-700' :
+                      project.instructorStatus === 'REJECTED' ? 'bg-rose-100 text-rose-700' :
+                      'bg-amber-100 text-amber-700 border border-amber-200'
+                    }`}>
+                      {project.instructorStatus === 'ACCEPTED' ? 'Đã nhận' :
+                       project.instructorStatus === 'REJECTED' ? 'Từ chối' : 'Chờ phản hồi'}
+                    </span>
+                  </div>
+                )}
                 <div className="flex items-center justify-between text-xs text-gray-400 pt-3 border-t border-gray-100">
                   <span>Created {project.createdAt ? new Date(project.createdAt).toLocaleDateString() : 'N/A'}</span>
                   <span className="text-indigo-600 font-semibold group-hover:translate-x-1 transition-transform">

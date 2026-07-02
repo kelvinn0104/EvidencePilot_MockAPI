@@ -9,6 +9,7 @@ export default function InstructorDashboard() {
 
   // --- 1. STATES MANAGEMENT ---
   const [projects, setProjects] = useState([]);
+  const [invitations, setInvitations] = useState([]);
   const [totalElements, setTotalElements] = useState(0);
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
@@ -50,24 +51,45 @@ export default function InstructorDashboard() {
       }
 
       // BƯỚC 3: Thực hiện bộ lọc (Chỉ lấy dự án mà instructorIds có chứa ID giảng viên hoặc trùng với instructorId)
-      const filteredProjects = rawProjects.filter(project => {
-        if (project.instructorIds && Array.isArray(project.instructorIds)) {
-          return project.instructorIds.map(id => Number(id)).includes(currentInstructorId);
-        }
-        if (project.instructorId) {
-          return Number(project.instructorId) === currentInstructorId;
-        }
-        return false; // Không được gán cho ai thì ẩn đi
+      const activeProjects = rawProjects.filter(project => {
+        const isAssigned = (project.instructorIds && Array.isArray(project.instructorIds) && project.instructorIds.map(id => Number(id)).includes(currentInstructorId)) ||
+                           (project.instructorId && Number(project.instructorId) === currentInstructorId);
+        return isAssigned && project.instructorStatus !== 'PENDING' && project.instructorStatus !== 'REJECTED';
       });
 
-      setProjects(filteredProjects);
-      setTotalElements(filteredProjects.length);
+      const pendingInvitations = rawProjects.filter(project => {
+        const isAssigned = (project.instructorIds && Array.isArray(project.instructorIds) && project.instructorIds.map(id => Number(id)).includes(currentInstructorId)) ||
+                           (project.instructorId && Number(project.instructorId) === currentInstructorId);
+        return isAssigned && project.instructorStatus === 'PENDING';
+      });
+
+      setProjects(activeProjects);
+      setInvitations(pendingInvitations);
+      setTotalElements(activeProjects.length);
 
     } catch (error) {
       console.error("Error loading workspace monitor:", error);
       setErrorMessage("Could not synchronize dynamic student projects cluster state.");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleAcceptInvitation = async (projId) => {
+    try {
+      await api.put(`/api/projects/${projId}/accept-invitation`);
+      fetchInstructorProjects();
+    } catch (error) {
+      console.error("Error accepting invitation:", error);
+    }
+  };
+
+  const handleRefuseInvitation = async (projId) => {
+    try {
+      await api.put(`/api/projects/${projId}/refuse-invitation`);
+      fetchInstructorProjects();
+    } catch (error) {
+      console.error("Error refusing invitation:", error);
     }
   };
 
@@ -231,6 +253,54 @@ export default function InstructorDashboard() {
           
           {/* LEFT: Paged Student Projects */}
           <div className="lg:col-span-2 space-y-4">
+            {invitations.length > 0 && (
+              <div className="bg-gradient-to-r from-amber-50 to-orange-50/50 border border-orange-200 rounded-3xl p-5 shadow-sm space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-black text-orange-800 flex items-center gap-2">
+                    <span>📩 Lời mời tham gia hướng dẫn ({invitations.length})</span>
+                  </h3>
+                  <span className="bg-orange-100 text-orange-850 text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider animate-pulse">Cần phản hồi</span>
+                </div>
+                
+                <div className="space-y-3">
+                  {invitations.map((inv) => (
+                    <div key={inv.id} className="bg-white p-4 rounded-2xl border border-orange-100 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4 transition hover:border-orange-350">
+                      <div>
+                        <h4 className="font-bold text-gray-800 text-sm">{inv.title || inv.name}</h4>
+                        <p className="text-xs text-gray-500 mt-1">{inv.description || "Chưa có mô tả dự án."}</p>
+                        <div className="flex items-center gap-2 mt-2 text-[10px] font-bold text-gray-400">
+                          <span>📅 Ngày tạo: {new Date(inv.createdAt).toLocaleDateString('vi-VN')}</span>
+                          <span>•</span>
+                          <span>👤 Trưởng nhóm: {inv.members?.find(m => m.role === 'PL')?.email || 'N/A'}</span>
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-center gap-2 shrink-0">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleAcceptInvitation(inv.id);
+                          }}
+                          className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-sm hover:shadow transition"
+                        >
+                          Đồng ý
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleRefuseInvitation(inv.id);
+                          }}
+                          className="px-4 py-2 bg-rose-50 hover:bg-rose-100 text-rose-600 font-bold text-xs rounded-xl border border-rose-200 transition"
+                        >
+                          Từ chối
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <div className="bg-white rounded-3xl border border-gray-200 shadow-sm overflow-hidden">
               <div className="p-4 bg-gray-50 border-b border-gray-100 flex justify-between items-center">
                 <span className="text-xs font-black text-gray-500 uppercase tracking-wider">Assigned Repositories ({totalElements})</span>

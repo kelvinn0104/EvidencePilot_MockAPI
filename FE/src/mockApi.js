@@ -48,7 +48,7 @@ export default function mockAdapter(config) {
     const initDB = () => {
       
 
-      if (!localStorage.getItem('mock_db_initialized_en_v12')) {
+      if (!localStorage.getItem('mock_db_initialized_en_v13')) {
         setDB('users', [
           { id: 1, email: 'student@evidencepilot.edu', password: '123', role: 'STUDENT', firstName: 'Nguyễn', lastName: 'Văn A', age: 21 },
           { id: 102, email: 'student2@evidencepilot.edu', password: '123', role: 'STUDENT', firstName: 'Trần', lastName: 'Văn B', age: 22 },
@@ -68,6 +68,7 @@ export default function mockAdapter(config) {
             status: 'ACTIVE', 
             createdAt: new Date().toISOString(),
             instructorId: 2,
+            instructorStatus: 'ACCEPTED',
             members: [
               { email: 'student@evidencepilot.edu', role: 'PL' },
               { email: 'student2@evidencepilot.edu', role: 'RW' },
@@ -242,7 +243,7 @@ export default function mockAdapter(config) {
           status: 'PENDING',
           requestedAt: initialRequest.requestedAt
         }]);
-        localStorage.setItem('mock_db_initialized_en_v12', 'true');
+        localStorage.setItem('mock_db_initialized_en_v13', 'true');
       }
 
       if (!localStorage.getItem('mock_db_initialized_collections_v4')) {
@@ -687,6 +688,7 @@ export default function mockAdapter(config) {
         status: 'ACTIVE',
         createdAt: new Date().toISOString(),
         instructorId,
+        instructorStatus: 'PENDING',
         members: projectMembers
       };
 
@@ -924,6 +926,30 @@ export default function mockAdapter(config) {
         setDB('papers', papers);
       }
 
+      return respond200(projects[pIdx]);
+    }
+
+    if (method === 'PUT' && pathWithoutQuery.startsWith('/api/projects/') && pathWithoutQuery.endsWith('/accept-invitation')) {
+      const parts = pathWithoutQuery.split('/');
+      const projId = parts[3];
+      const projects = getDB('projects', []);
+      const pIdx = projects.findIndex(p => p.id === projId);
+      if (pIdx === -1) return respond404('Không tìm thấy dự án.');
+      
+      projects[pIdx].instructorStatus = 'ACCEPTED';
+      setDB('projects', projects);
+      return respond200(projects[pIdx]);
+    }
+
+    if (method === 'PUT' && pathWithoutQuery.startsWith('/api/projects/') && pathWithoutQuery.endsWith('/refuse-invitation')) {
+      const parts = pathWithoutQuery.split('/');
+      const projId = parts[3];
+      const projects = getDB('projects', []);
+      const pIdx = projects.findIndex(p => p.id === projId);
+      if (pIdx === -1) return respond404('Không tìm thấy dự án.');
+      
+      projects[pIdx].instructorStatus = 'REJECTED';
+      setDB('projects', projects);
       return respond200(projects[pIdx]);
     }
 

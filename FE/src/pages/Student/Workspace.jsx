@@ -3480,8 +3480,16 @@ export default function Workspace() {
                         {projInst.firstName.charAt(0)}
                       </div>
                       <div>
-                        <div className="font-bold text-slate-800 text-xs">
+                        <div className="font-bold text-slate-800 text-xs flex items-center gap-2">
                           {projInst.firstName} {projInst.lastName}
+                          <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-bold uppercase tracking-wider ${
+                            project?.instructorStatus === 'ACCEPTED' ? 'bg-emerald-100 text-emerald-700' :
+                            project?.instructorStatus === 'REJECTED' ? 'bg-rose-100 text-rose-700' :
+                            'bg-amber-100 text-amber-700 border border-amber-200'
+                          }`}>
+                            {project?.instructorStatus === 'ACCEPTED' ? 'Đã nhận' :
+                             project?.instructorStatus === 'REJECTED' ? 'Từ chối' : 'Chờ phản hồi'}
+                          </span>
                         </div>
                         <div className="text-[10px] text-slate-400 font-mono mt-0.5">{projInst.email}</div>
                       </div>
