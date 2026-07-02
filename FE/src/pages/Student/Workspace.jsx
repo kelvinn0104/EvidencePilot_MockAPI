@@ -2170,7 +2170,8 @@ export default function Workspace() {
                               .map(p => {
                                 const cleanFilename = p.filename.split('/').pop();
                                 const memberObj = project?.members?.find(m => m.email === p.assignedTo);
-                                const initialsBadge = memberObj ? `[${memberObj.role}]` : '';
+                                const initialsBadge = memberObj ? `[${memberObj.role}]` : (language === 'vi' ? '[Chưa gán]' : '[Unassigned]');
+                                const isUnassigned = !memberObj;
 
                                 return (
                                   <div
@@ -2189,7 +2190,7 @@ export default function Workspace() {
                                         <span className="truncate" title={cleanFilename}>{cleanFilename}</span>
                                       </div>
                                       {initialsBadge && (
-                                        <span className="text-[9px] font-black text-indigo-650 bg-indigo-50 px-1 rounded shrink-0 scale-90">
+                                        <span className={`text-[9px] font-black px-1 rounded shrink-0 scale-90 ${isUnassigned ? 'text-amber-700 bg-amber-50 border border-amber-200' : 'text-indigo-650 bg-indigo-50 border border-indigo-150'}`}>
                                           {initialsBadge}
                                         </span>
                                       )}
