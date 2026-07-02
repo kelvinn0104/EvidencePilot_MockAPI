@@ -283,16 +283,13 @@ export default function Workspace() {
   // Đồng bộ hóa luận điểm trực tiếp từ mã nguồn LaTeX
   const syncClaimsFromCode = async (code, projId) => {
     if (!projId) return;
-    const matches = [...code.matchAll(/\hl\{([^}]+)\}/g)];
-    const claimContents = matches.map(m => m[1].trim()).filter(Boolean);
     try {
-      const res = await api.post(`/api/projects/${projId}/sync-claims`, { claimContents });
-      setClaims(res.data);
-      // Cập nhật lại dữ liệu đồ thị đối chiếu tương ứng
+      const res = await api.get(`/api/claims/by-project/${projId}`);
+      setClaims(res.data || []);
       const graphRes = await api.get(`/api/projects/${projId}/traceability-export`);
       setGraphData(graphRes.data);
     } catch (err) {
-      console.error('Failed to sync claims', err);
+      console.error('Failed to reload claims', err);
     }
   };
   // Tự động quét, đồng bộ và phân tích toàn bộ luận điểm khi ấn Đối chiếu AI ở lề trái
@@ -376,17 +373,17 @@ export default function Workspace() {
     setActiveTab('Claims');
     setIsDrawerOpen(true);
     
-    // 2. Chạy đồng bộ hóa luận điểm và phân tích AI cho toàn bộ luận điểm trong bài viết hiện tại
+    // 2. Chạy phân tích AI cho toàn bộ luận điểm do người dùng đã nhập
     if (projectId) {
-      showToast("Đang đồng bộ hóa và đối sánh luận điểm...");
-      const matches = [...codeContent.matchAll(/\hl\{([^}]+)\}/g)];
-      const claimContents = matches.map(m => m[1].trim()).filter(Boolean);
+      if (claims.length === 0) {
+        showToast(language === 'vi' ? "Vui lòng nhập ít nhất một luận điểm trước khi chạy phân tích AI." : "Please enter at least one claim before running AI analysis.");
+        return;
+      }
+
+      showToast("Đang đối sánh luận điểm...");
       try {
-        const res = await api.post(`/api/projects/${projectId}/sync-claims`, { claimContents });
-        setClaims(res.data);
-        
-        // Tự động phân tích toàn bộ các luận điểm của paper
-        for (const claim of res.data) {
+        // Tự động phân tích toàn bộ các luận điểm hiện có của dự án
+        for (const claim of claims) {
           await api.post(`/api/claims/${claim.id}/analyze`);
         }
         
@@ -398,7 +395,7 @@ export default function Workspace() {
         
         showToast("Đối chiếu AI hoàn tất!");
       } catch (err) {
-        console.error('Failed to run dynamic claims sync & analyze', err);
+        console.error('Failed to run claims analyze', err);
       }
     }
   };
@@ -481,11 +478,8 @@ export default function Workspace() {
             }
             return compiled;
           };
-          const code = compileLocally(mainFile, paperList);
-          const matches = [...code.matchAll(/\hl\{([^}]+)\}/g)];
-          const claimContents = matches.map(m => m[1].trim()).filter(Boolean);
-          const syncRes = await api.post(`/api/projects/${projId}/sync-claims`, { claimContents });
-          setClaims(syncRes.data);
+          const claimRes = await api.get(`/api/claims/by-project/${projId}`);
+          setClaims(claimRes.data || []);
         } else {
           const claimRes = await api.get(`/api/claims/by-project/${projId}`);
           setClaims(claimRes.data || []);
@@ -859,6 +853,13 @@ export default function Workspace() {
       showToast("Vui lòng chọn hoặc tải lên một bản nháp bài viết trước.");
       return;
     }
+    
+    // Yêu cầu bắt buộc có luận điểm do người dùng tự nhập mới hoạt động
+    if (claims.length === 0) {
+      showToast(language === 'vi' ? "Vui lòng nhập ít nhất một luận điểm trước khi chạy phân tích AI." : "Please enter at least one claim before running AI analysis.");
+      return;
+    }
+
     setLoadingAiReview(true);
     setShowAiReviewModal(true);
     try {
@@ -866,13 +867,8 @@ export default function Workspace() {
       const res = await api.post(`/api/papers/${selectedPaper.id}/review`);
       setAiReviewResult(res.data);
 
-      // 2. Tự động chạy đối chiếu toàn bộ luận điểm trong bài viết hiện tại
-      const matches = [...codeContent.matchAll(/\hl\{([^}]+)\}/g)];
-      const claimContents = matches.map(m => m[1].trim()).filter(Boolean);
-      const syncRes = await api.post(`/api/projects/${project.id}/sync-claims`, { claimContents });
-      setClaims(syncRes.data);
-      
-      for (const claim of syncRes.data) {
+      // 2. Chạy đối chiếu phân tích AI cho các luận điểm HIỆN TẠI (do người dùng tự nhập)
+      for (const claim of claims) {
         await api.post(`/api/claims/${claim.id}/analyze`);
       }
       
