@@ -1474,8 +1474,26 @@ We successfully implemented a low-cost mobile monitoring robot. Future work will
       const currentUser = getCurrentUserFromHeaders();
       if (!currentUser) return respond401();
       
+      console.log('[DEBUG] GET /api/feedback-requests:', {
+        currentUser: { id: currentUser.id, email: currentUser.email, role: currentUser.role },
+        allDatabaseRequests: feedbackRequests.map(r => ({ id: r.id, instructorId: r.instructorId, status: r.status, paperName: r.paperName }))
+      });
+
       if (currentUser.role === 'INSTRUCTOR') {
-        return respond200(feedbackRequests.filter(r => r.instructorId === currentUser.id));
+        const feedbacks = getDB('feedbacks', []);
+        const filtered = feedbackRequests
+          .filter(r => String(r.instructorId) === String(currentUser.id))
+          .map(r => {
+            const fb = feedbacks.find(f => f.requestId === r.id);
+            return {
+              ...r,
+              content: fb ? fb.content : 'Yêu cầu phê duyệt đang chờ được xử lý.',
+              replies: fb ? fb.replies || [] : []
+            };
+          });
+        
+        console.log('[DEBUG] Filtered requests for logged-in instructor:', filtered);
+        return respond200(filtered);
       }
       
       if (currentUser.role === 'STUDENT') {
