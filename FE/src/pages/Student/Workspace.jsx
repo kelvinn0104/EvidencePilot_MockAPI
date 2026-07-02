@@ -4081,6 +4081,13 @@ export default function Workspace() {
       </div>
     )
   }
+
+      {toastMessage && (
+        <div className="fixed bottom-5 right-5 z-[9999] bg-slate-900 text-white text-xs font-semibold px-4.5 py-3 rounded-xl shadow-2xl border border-slate-800 flex items-center gap-2.5 animate-in fade-in slide-in-from-bottom-5 duration-200">
+          <span className="text-indigo-400">✨</span>
+          <span>{toastMessage}</span>
+        </div>
+      )}
     </div >
   );
 }
