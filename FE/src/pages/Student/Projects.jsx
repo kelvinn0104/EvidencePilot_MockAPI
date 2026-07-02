@@ -441,7 +441,7 @@ export default function Projects() {
                         }`}
                       >
                         <svg className="w-6 h-6 text-indigo-505" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
-                        <span className="text-xs font-semibold">Upload LaTeX File (.tex)</span>
+                        <span className="text-xs font-semibold">Upload Document (.tex, .pdf, .docx)</span>
                       </button>
                     </div>
                   </div>
@@ -481,13 +481,13 @@ export default function Projects() {
                     </div>
                   ) : (
                     <div>
-                      <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-3">Upload Main Document File (.tex)</span>
+                      <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-3">Upload Main Document File (.tex, .pdf, .docx)</span>
                       <div className="border border-dashed border-gray-300 hover:border-indigo-500 rounded-xl p-6 text-center cursor-pointer transition bg-gray-50/50" onClick={() => document.getElementById('paper-upload-wizard').click()}>
                         <input
                           id="paper-upload-wizard"
                           type="file"
                           className="hidden"
-                          accept=".tex"
+                          accept=".tex,.pdf,.docx"
                           onChange={(e) => {
                             if (e.target.files && e.target.files.length > 0) {
                               setUploadedPaperFile(e.target.files[0]);
@@ -495,7 +495,7 @@ export default function Projects() {
                           }}
                         />
                         <svg className="w-8 h-8 text-gray-400 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" /></svg>
-                        <p className="text-xs font-semibold text-gray-700">Choose your LaTeX file (.tex)</p>
+                        <p className="text-xs font-semibold text-gray-700">Choose your document file (.tex, .pdf, .docx)</p>
                       </div>
 
                       {uploadedPaperFile && (

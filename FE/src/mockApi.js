@@ -1055,20 +1055,39 @@ export default function mockAdapter(config) {
       }
 
       const papers = getDB('papers', []);
-      const newPaper = {
-        id: 'paper-' + Math.random().toString(36).substr(2, 9),
-        projectId,
-        name: filename,
-        originalFilename: filename,
-        filename: filename,
-        size,
-        uploadedAt: new Date().toISOString(),
-        content: `% Tài liệu LaTeX mới tải lên\n\\documentclass{article}\n\\begin{document}\n\\section{Mở đầu}\nĐang cập nhật nội dung...\n\\end{document}`,
-        extractedText: `% Tài liệu LaTeX mới tải lên\n\\documentclass{article}\n\\begin{document}\n\\section{Mở đầu}\nĐang cập nhật nội dung...\n\\end{document}`
-      };
-      papers.push(newPaper);
-      setDB('papers', papers);
-      return respond201(newPaper);
+      const existingMainIndex = papers.findIndex(p => p.projectId === projectId && p.filename === 'main.tex');
+
+      let content = `% LaTeX main document uploaded: ${filename}\n\\documentclass{article}\n\\usepackage[utf8]{inputenc}\n\\begin{document}\n\\section{Introduction}\nContent of the LaTeX document ${filename} loaded.\n\\end{document}`;
+      if (filename.toLowerCase().endsWith('.pdf') || filename.toLowerCase().endsWith('.docx')) {
+        content = `% Automatically converted from document: ${filename}\n\\documentclass{article}\n\\usepackage[utf8]{inputenc}\n\\begin{document}\n\\section{Introduction}\nContent successfully parsed and extracted from ${filename}.\n\\end{document}`;
+      }
+
+      if (existingMainIndex > -1) {
+        papers[existingMainIndex].originalFilename = filename;
+        papers[existingMainIndex].content = content;
+        papers[existingMainIndex].extractedText = content;
+        papers[existingMainIndex].size = size;
+        papers[existingMainIndex].uploadedAt = new Date().toISOString();
+        setDB('papers', papers);
+        return respond200(papers[existingMainIndex]);
+      } else {
+        const newPaper = {
+          id: 'paper-' + Math.random().toString(36).substr(2, 9),
+          projectId,
+          name: 'main.tex',
+          originalFilename: filename,
+          filename: 'main.tex',
+          size,
+          uploadedAt: new Date().toISOString(),
+          content: content,
+          extractedText: content,
+          status: 'DRAFT',
+          comments: []
+        };
+        papers.push(newPaper);
+        setDB('papers', papers);
+        return respond201(newPaper);
+      }
     }
 
     // 6.5 Lịch sử phiên bản (Paper Versions)
