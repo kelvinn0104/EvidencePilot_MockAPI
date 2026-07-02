@@ -1568,31 +1568,39 @@ export default function mockAdapter(config) {
 
     if (method === 'POST' && pathWithoutQuery === '/api/collections') {
       const collections = getDB('collections', []);
-      const newCol = {
-        id: 'col_' + Math.floor(100 + Math.random() * 900),
-        title: body.title,
-        description: body.description || 'No description provided.',
-        projectId: body.projectId || 'proj_101',
-        paperId: body.paperId || '',
-        createdAt: new Date().toISOString().split('T')[0]
-      };
-      collections.push(newCol);
+      const categoryIds = body.categoryIds || (body.projectId ? [body.projectId] : ['proj_101']);
+      
+      const newCols = [];
+      categoryIds.forEach(pId => {
+        const newCol = {
+          id: 'col_' + Math.floor(100 + Math.random() * 900),
+          title: body.title,
+          description: body.description || 'No description provided.',
+          projectId: pId,
+          paperId: body.paperId || '',
+          createdAt: new Date().toISOString().split('T')[0]
+        };
+        collections.push(newCol);
+        newCols.push(newCol);
+      });
       setDB('collections', collections);
 
       // Ghi audit log
       const logs = getDB('auditLogs', []);
       const currentUser = getCurrentUserFromHeaders();
-      logs.unshift({
-        id: 'log_' + Date.now(),
-        timestamp: new Date().toISOString().replace('T', ' ').substring(0, 19),
-        username: currentUser?.email || 'instructor.test@fpt.edu.vn',
-        role: currentUser?.role || 'INSTRUCTOR',
-        action: `Created new evidence collection template [${newCol.id}]`,
-        status: 'SUCCESS'
+      newCols.forEach(col => {
+        logs.unshift({
+          id: 'log_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
+          timestamp: new Date().toISOString().replace('T', ' ').substring(0, 19),
+          username: currentUser?.email || 'instructor.test@fpt.edu.vn',
+          role: currentUser?.role || 'INSTRUCTOR',
+          action: `Created new evidence collection template [${col.id}] for project [${col.projectId}]`,
+          status: 'SUCCESS'
+        });
       });
       setDB('auditLogs', logs);
 
-      return respond201(newCol);
+      return respond201(newCols[0]);
     }
 
     const collectionIdRegex = /^\/api\/collections\/([^/]+)$/;
@@ -1644,24 +1652,45 @@ export default function mockAdapter(config) {
         fileUrl = body.fileUrl;
       }
 
-      const referenceDocuments = getDB('referenceDocuments', []);
-      const idx = referenceDocuments.findIndex(d => d.collectionId === colId);
-      const newDoc = {
-        id: idx > -1 ? referenceDocuments[idx].id : `doc_${Date.now()}`,
-        name: filename,
-        collectionId: colId,
-        fileUrl: fileUrl,
-        uploadedAt: new Date().toISOString().split('T')[0]
-      };
+      const collections = getDB('collections', []);
+      const targetCol = collections.find(c => c.id === colId);
+      const targetTitle = targetCol ? targetCol.title : '';
 
-      if (idx > -1) {
-        referenceDocuments[idx] = newDoc;
-      } else {
-        referenceDocuments.push(newDoc);
-      }
+      // Find all collections with the same title so we share this document to all of them
+      const relatedCols = targetTitle 
+        ? collections.filter(c => c.title === targetTitle)
+        : (targetCol ? [targetCol] : []);
+
+      const referenceDocuments = getDB('referenceDocuments', []);
+      let firstCreatedDoc = null;
+
+      relatedCols.forEach(col => {
+        const existingIdx = referenceDocuments.findIndex(d => d.collectionId === col.id && d.name === filename);
+        const docId = existingIdx > -1 
+          ? referenceDocuments[existingIdx].id 
+          : `doc_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+        
+        const newDoc = {
+          id: docId,
+          name: filename,
+          collectionId: col.id,
+          fileUrl: fileUrl,
+          uploadedAt: new Date().toISOString().split('T')[0]
+        };
+
+        if (existingIdx > -1) {
+          referenceDocuments[existingIdx] = newDoc;
+        } else {
+          referenceDocuments.push(newDoc);
+        }
+
+        if (col.id === colId) {
+          firstCreatedDoc = newDoc;
+        }
+      });
 
       setDB('referenceDocuments', referenceDocuments);
-      return respond201(newDoc);
+      return respond201(firstCreatedDoc || { name: filename, collectionId: colId, fileUrl });
     }
 
     const paperSectionsRegex = /^\/api\/papers\/([^/]+)\/sections$/;
