@@ -23,7 +23,12 @@ export default function CollectionList() {
   const [editFiles, setEditFiles] = useState([]); 
   const [currentAttachedPdfs, setCurrentAttachedPdfs] = useState([]); 
 
-  // --- TẢI DANH SÁCH BAN ĐẦU (HIỂN THỊ TẤT CẢ CATEGORY ĐƯỢC ADMIN GÁN) ---
+  // --- STATES QUẢN LÝ MODAL SHARE CHO SINH VIÊN ---
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [selectedShareProjects, setSelectedShareProjects] = useState([]);
+  const [selectedShareCollections, setSelectedShareCollections] = useState([]);
+
+  // --- TẢI DANH SÁCH BAN ĐẦU ---
   const fetchInitialData = async () => {
     setLoading(true);
     setErrorMessage("");
@@ -74,13 +79,11 @@ export default function CollectionList() {
       // 4. AN TOÀN: Gom dữ liệu từ từng Project endpoint và LocalStorage để hiển thị ngay lập tức khi vừa tạo
       if (assignedProjects.length > 0) {
         const firstProject = assignedProjects[0];
-        // Giữ lại tab đang chọn nếu có, không thì lấy project đầu tiên
         const activeTabId = selectedProjectId || firstProject.id;
         setSelectedProjectId(activeTabId);
         
         let accumulatedCollections = [];
         
-        // Gọi song song các API của từng project được phân quyền
         const requests = assignedProjects.map(async (p) => {
           try {
             const res = await api.get(`/api/projects/${p.id}/collections`);
@@ -94,14 +97,12 @@ export default function CollectionList() {
         
         await Promise.all(requests);
 
-        // ĐỒNG BỘ: Đọc trực tiếp dữ liệu từ LocalStorage do màn Create vừa đẩy vào
         const localCollections = localStorage.getItem('mock_db_collections');
         if (localCollections) {
           const parsedLocals = JSON.parse(localCollections);
           parsedLocals.forEach(localCol => {
             const existingIdx = accumulatedCollections.findIndex(c => c.id === localCol.id);
             if (existingIdx !== -1) {
-              // Ưu tiên ghi đè dữ liệu Local mới nhất lên object từ API rỗng
               accumulatedCollections[existingIdx] = { ...accumulatedCollections[existingIdx], ...localCol };
             } else {
               accumulatedCollections.push(localCol);
@@ -111,7 +112,6 @@ export default function CollectionList() {
 
         setCollections(accumulatedCollections);
 
-        // Tải danh sách bản thảo (papers) của tab hiện tại phục vụ cho Modal Edit
         try {
           const papersRes = await api.get(`/api/papers/by-project/${activeTabId}`);
           setPapers(papersRes.data || []);
@@ -133,7 +133,6 @@ export default function CollectionList() {
     setSelectedProjectId(pId);
     if (!pId) return;
     try {
-      // Khi bấm chuyển Tab, tải danh sách papers tương ứng của Tab đó
       const papersRes = await api.get(`/api/papers/by-project/${pId}`);
       setPapers(papersRes.data || []);
     } catch (error) {
@@ -141,7 +140,6 @@ export default function CollectionList() {
     }
   };
 
-  // Logic lọc dữ liệu hiển thị trên Client: Chấp nhận cả mảng `categoryIds` mới và biến đơn `projectId` cũ
   const displayedCollections = collections.filter(col => {
     if (col.categoryIds && Array.isArray(col.categoryIds)) {
       return col.categoryIds.map(id => String(id)).includes(String(selectedProjectId));
@@ -155,7 +153,6 @@ export default function CollectionList() {
       await api.delete(`/api/collections/${id}`);
       setCollections(prev => prev.filter(item => item.id !== id));
       
-      // Cập nhật lại cả LocalStorage phòng trường hợp bản ghi nằm ở Mock DB
       const localCollections = localStorage.getItem('mock_db_collections');
       if (localCollections) {
         const parsedCols = JSON.parse(localCollections).filter(item => item.id !== id);
@@ -258,9 +255,7 @@ export default function CollectionList() {
       localStorage.setItem('mock_db_referenceDocuments', JSON.stringify(parsedDocs));
       setDocuments(parsedDocs);
 
-      // Gọi lại hàm fetchInitialData để đồng bộ mượt mà danh sách hiển thị
       await fetchInitialData();
-
       setIsEditModalOpen(false);
       alert("Collection changes and file repository synchronized successfully!");
     } catch (error) {
@@ -269,6 +264,60 @@ export default function CollectionList() {
     } finally {
       setLoading(false);
     }
+  };
+
+  // --- XỬ LÝ LOGIC CHỌN VÀ SUBMIT SHARE CHO SINH VIÊN ---
+  const openShareModal = (initialCol) => {
+    setSelectedShareCollections([String(initialCol.id)]);
+    setSelectedShareProjects([String(selectedProjectId)]);
+    setIsShareModalOpen(true);
+  };
+
+  const handleToggleProjectCheckbox = (pId) => {
+    const stringId = String(pId);
+    setSelectedShareProjects(prev => 
+      prev.includes(stringId) ? prev.filter(id => id !== stringId) : [...prev, stringId]
+    );
+  };
+
+  const handleToggleCollectionCheckbox = (cId) => {
+    const stringId = String(cId);
+    setSelectedShareCollections(prev => 
+      prev.includes(stringId) ? prev.filter(id => id !== stringId) : [...prev, stringId]
+    );
+  };
+
+  const handleConfirmShareToStudents = (e) => {
+    e.preventDefault();
+    if (selectedShareProjects.length === 0) {
+      alert("Please choose at least one project to invite!");
+      return;
+    }
+    if (selectedShareCollections.length === 0) {
+      alert("Please select at least one document collection to share!");
+      return;
+    }
+
+    const existingSharedData = localStorage.getItem('mock_db_shared_collections');
+    let sharedList = existingSharedData ? JSON.parse(existingSharedData) : [];
+
+    selectedShareProjects.forEach(projId => {
+      selectedShareCollections.forEach(colId => {
+        const isDuplicate = sharedList.some(item => String(item.projectId) === String(projId) && String(item.collectionId) === String(colId));
+        if (!isDuplicate) {
+          sharedList.push({
+            id: `share_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+            projectId: projId,
+            collectionId: colId,
+            sharedAt: new Date().toISOString()
+          });
+        }
+      });
+    });
+
+    localStorage.setItem('mock_db_shared_collections', JSON.stringify(sharedList));
+    setIsShareModalOpen(false);
+    alert("Collections have been successfully shared and broadcasted to student workstations!");
   };
 
   useEffect(() => {
@@ -394,9 +443,28 @@ export default function CollectionList() {
                             <span className="text-gray-400 italic">No document bound</span>
                           )}
                         </td>
-                        <td className="px-6 py-4 text-right space-x-3">
-                          <button onClick={() => openEditModal(col, matchedPdfs)} className="text-xs font-bold text-amber-600 hover:text-amber-800 hover:underline transition">Edit</button>
-                          <button onClick={() => handleDeleteCollection(col.id)} className="text-xs font-bold text-rose-600 hover:text-rose-900 hover:underline transition">Delete</button>
+                        <td className="px-6 py-4 text-right">
+                          {/* CHUẨN: 3 nút xếp dọc từ trên xuống thẳng tắp */}
+                          <div className="flex flex-col gap-2 items-end">
+                            <button 
+                              onClick={() => openShareModal(col)} 
+                              className="text-xs font-bold text-emerald-600 hover:text-emerald-800 hover:underline transition"
+                            >
+                              Share
+                            </button>
+                            <button 
+                              onClick={() => openEditModal(col, matchedPdfs)} 
+                              className="text-xs font-bold text-amber-600 hover:text-amber-800 hover:underline transition"
+                            >
+                              Edit
+                            </button>
+                            <button 
+                              onClick={() => handleDeleteCollection(col.id)} 
+                              className="text-xs font-bold text-rose-600 hover:text-rose-900 hover:underline transition"
+                            >
+                              Delete
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     );
@@ -406,6 +474,71 @@ export default function CollectionList() {
             </table>
           </div>
         </div>
+
+        {/* MODAL SHARE TO STUDENT */}
+        {isShareModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 animate-fadeIn">
+            <div className="bg-white rounded-3xl border border-gray-200 shadow-2xl max-w-xl w-full p-6 space-y-5 text-xs text-left">
+              <div>
+                <h3 className="text-lg font-black text-[#1e3a8a]">Share To Student</h3>
+                <p className="text-[11px] text-gray-400">Broadcast selected evidence blueprints and documentation layers directly to student workspaces.</p>
+              </div>
+              
+              <form onSubmit={handleConfirmShareToStudents} className="space-y-4">
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-gray-500 uppercase tracking-wide block">1. Categories</label>
+                  <div className="bg-gray-50 border border-gray-200 rounded-2xl p-3 max-h-40 overflow-y-auto space-y-2">
+                    {projects.map((proj) => {
+                      const isChecked = selectedShareProjects.includes(String(proj.id));
+                      return (
+                        <label key={proj.id} className="flex items-center space-x-3 bg-white p-2 rounded-xl border border-gray-200/60 shadow-xs cursor-pointer hover:bg-slate-50 transition">
+                          <input 
+                            type="checkbox" 
+                            checked={isChecked}
+                            onChange={() => handleToggleProjectCheckbox(proj.id)}
+                            className="w-4 h-4 rounded text-[#1e3a8a] focus:ring-[#1e3a8a] border-gray-300"
+                          />
+                          <div className="flex flex-col">
+                            <span className="font-bold text-gray-800">{proj.title || proj.name}</span>
+                            <span className="text-[10px] text-gray-400 font-mono">ID: {proj.id}</span>
+                          </div>
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-gray-500 uppercase tracking-wide block">2. Collections</label>
+                  <div className="bg-gray-50 border border-gray-200 rounded-2xl p-3 max-h-40 overflow-y-auto space-y-2">
+                    {displayedCollections.map((col) => {
+                      const isChecked = selectedShareCollections.includes(String(col.id));
+                      return (
+                        <label key={col.id} className="flex items-center space-x-3 bg-white p-2 rounded-xl border border-gray-200/60 shadow-xs cursor-pointer hover:bg-slate-50 transition">
+                          <input 
+                            type="checkbox" 
+                            checked={isChecked}
+                            onChange={() => handleToggleCollectionCheckbox(col.id)}
+                            className="w-4 h-4 rounded text-[#1e3a8a] focus:ring-[#1e3a8a] border-gray-300"
+                          />
+                          <div className="flex flex-col">
+                            <span className="font-bold text-gray-900">{col.title}</span>
+                            <span className="text-[10px] text-gray-400 truncate max-w-sm">{col.description || "No description layout."}</span>
+                          </div>
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className="flex gap-3 pt-3 border-t border-gray-100 font-bold">
+                  <button type="button" onClick={() => setIsShareModalOpen(false)} className="flex-1 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-xl text-center transition">Close Form</button>
+                  <button type="submit" className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-center transition shadow-md">Confirm Share</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
 
         {/* MODAL EDIT */}
         {isEditModalOpen && (
