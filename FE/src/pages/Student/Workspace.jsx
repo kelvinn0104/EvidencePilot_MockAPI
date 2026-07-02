@@ -3473,22 +3473,23 @@ export default function Workspace() {
                 return (
                   <div className="bg-gradient-to-r from-blue-50 to-indigo-50/50 border border-blue-200 rounded-xl p-4 shadow-sm">
                     <h4 className="font-extrabold text-indigo-900 uppercase tracking-wider mb-2.5 flex items-center gap-1.5 text-xs">
-                      <span>👨‍🏫</span> Giảng viên hướng dẫn
+                      <span>👨‍🏫</span> {language === 'vi' ? 'Giảng viên hướng dẫn' : 'Project Instructor'}
                     </h4>
                     <div className="flex items-center gap-3 bg-white p-3 border border-indigo-100 rounded-xl">
-                      <div className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-700 font-bold flex items-center justify-center border border-indigo-200 shrink-0 text-xs">
+                      <div className="w-8 h-8 rounded-full bg-indigo-50 text-indigo-700 font-bold flex items-center justify-center border border-indigo-200 shrink-0 text-xs">
                         {projInst.firstName.charAt(0)}
                       </div>
                       <div>
                         <div className="font-bold text-slate-800 text-xs flex items-center gap-2">
                           {projInst.firstName} {projInst.lastName}
                           <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-bold uppercase tracking-wider ${
-                            project?.instructorStatus === 'ACCEPTED' ? 'bg-emerald-100 text-emerald-700' :
-                            project?.instructorStatus === 'REJECTED' ? 'bg-rose-100 text-rose-700' :
-                            'bg-amber-100 text-amber-700 border border-amber-200'
+                            project?.instructorStatus === 'ACCEPTED' ? 'bg-emerald-50 text-emerald-700 border border-emerald-250' :
+                            project?.instructorStatus === 'REJECTED' ? 'bg-rose-50 text-rose-700 border border-rose-250' :
+                            'bg-amber-50 text-amber-700 border border-amber-250'
                           }`}>
-                            {project?.instructorStatus === 'ACCEPTED' ? 'Đã nhận' :
-                             project?.instructorStatus === 'REJECTED' ? 'Từ chối' : 'Chờ phản hồi'}
+                            {project?.instructorStatus === 'ACCEPTED' ? (language === 'vi' ? 'Đã nhận' : 'Accepted') :
+                             project?.instructorStatus === 'REJECTED' ? (language === 'vi' ? 'Từ chối' : 'Refused') : 
+                             (language === 'vi' ? 'Chờ phản hồi' : 'Pending')}
                           </span>
                         </div>
                         <div className="text-[10px] text-slate-400 font-mono mt-0.5">{projInst.email}</div>

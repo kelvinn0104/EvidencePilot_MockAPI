@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { useLanguage } from '../../context/LanguageContext';
 import api from '../../api.js';
 
 export default function Projects() {
   const navigate = useNavigate();
   const { logout } = useAuth();
+  const { language } = useLanguage();
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -45,6 +47,9 @@ export default function Projects() {
 
   useEffect(() => {
     fetchProjects();
+    api.get('/api/users/instructors').then(res => {
+      setAllInstructors(res.data);
+    }).catch(err => console.error(err));
   }, []);
 
   useEffect(() => {
@@ -231,21 +236,35 @@ export default function Projects() {
                 <p className="text-sm text-gray-500 line-clamp-2 mb-4 min-h-[2.5rem]">
                   {project.description || 'No description provided.'}
                 </p>
-                {project.instructorId && (
-                  <div className="flex items-center justify-between mb-4 text-xs bg-gray-50/50 p-2.5 rounded-xl border border-gray-105">
-                    <span className="text-gray-600 font-semibold flex items-center gap-1">
-                      👨‍🏫 GV: {allInstructors.find(i => Number(i.id) === Number(project.instructorId))?.lastName || 'Giảng viên'}
-                    </span>
-                    <span className={`text-[9px] px-2 py-0.5 rounded-full font-black uppercase tracking-wider ${
-                      project.instructorStatus === 'ACCEPTED' ? 'bg-emerald-100 text-emerald-700' :
-                      project.instructorStatus === 'REJECTED' ? 'bg-rose-100 text-rose-700' :
-                      'bg-amber-100 text-amber-700 border border-amber-200'
-                    }`}>
-                      {project.instructorStatus === 'ACCEPTED' ? 'Đã nhận' :
-                       project.instructorStatus === 'REJECTED' ? 'Từ chối' : 'Chờ phản hồi'}
-                    </span>
-                  </div>
-                )}
+                {project.instructorId && (() => {
+                  const inst = allInstructors.find(i => Number(i.id) === Number(project.instructorId));
+                  const instName = inst ? `${inst.firstName} ${inst.lastName}` : (language === 'vi' ? 'Chưa phân công' : 'Not assigned');
+                  const labelPrefix = language === 'vi' ? 'GV hướng dẫn' : 'Instructor';
+                  return (
+                    <div className="flex items-center justify-between mb-4 text-xs bg-slate-50/50 hover:bg-slate-50 transition border border-slate-100 p-2.5 rounded-xl">
+                      <div className="flex items-center gap-2">
+                        <div className="w-5 h-5 rounded-full bg-[#1e3a8a]/10 text-[#1e3a8a] text-[10px] font-bold flex items-center justify-center">
+                          {instName.charAt(0)}
+                        </div>
+                        <div className="flex flex-col">
+                          <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider leading-none mb-0.5">{labelPrefix}</span>
+                          <span className="text-slate-700 font-bold leading-tight">
+                            {instName}
+                          </span>
+                        </div>
+                      </div>
+                      <span className={`text-[9px] px-2 py-0.5 rounded-full font-black uppercase tracking-wider shrink-0 ${
+                        project.instructorStatus === 'ACCEPTED' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' :
+                        project.instructorStatus === 'REJECTED' ? 'bg-rose-50 text-rose-700 border border-rose-200' :
+                        'bg-amber-50 text-amber-700 border border-amber-250'
+                      }`}>
+                        {project.instructorStatus === 'ACCEPTED' ? (language === 'vi' ? 'Đã nhận' : 'Accepted') :
+                         project.instructorStatus === 'REJECTED' ? (language === 'vi' ? 'Từ chối' : 'Refused') : 
+                         (language === 'vi' ? 'Chờ phản hồi' : 'Pending')}
+                      </span>
+                    </div>
+                  );
+                })()}
                 <div className="flex items-center justify-between text-xs text-gray-400 pt-3 border-t border-gray-100">
                   <span>Created {project.createdAt ? new Date(project.createdAt).toLocaleDateString() : 'N/A'}</span>
                   <span className="text-indigo-600 font-semibold group-hover:translate-x-1 transition-transform">
