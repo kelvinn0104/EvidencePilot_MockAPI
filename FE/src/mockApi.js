@@ -1762,12 +1762,52 @@ export default function mockAdapter(config) {
       const paper = papers.find(p => String(p.id) === String(paperId));
       if (!paper) return respond404('Không tìm thấy tài liệu.');
 
-      const sections = [
-        { id: 'sec-1', sectionTitle: '1. Introduction' },
-        { id: 'sec-2', sectionTitle: '2. Communication Protocols and Risk Reduction' },
-        { id: 'sec-3', sectionTitle: '3. Addressing Assumptions' },
-        { id: 'sec-4', sectionTitle: '4. CI/CD and Automation Pipelines' }
-      ];
+      const projectId = paper.projectId;
+      const allProjectPapers = papers.filter(p => p.projectId === projectId);
+      
+      let sections = [];
+      
+      // Helper function to extract sections from content string
+      const extractSectionsFromText = (text, fileLabel) => {
+        const matches = [...text.matchAll(/\\section\{([^}]+)\}/g)];
+        return matches.map((m, idx) => ({
+          id: `sec-${fileLabel}-${idx + 1}`,
+          sectionTitle: m[1].replace(/\\label\{[^}]+\}/g, '').trim() // Remove label tags inside title
+        }));
+      };
+
+      // 1. Scan main paper content for \input matches
+      const inputRegex = /\\input\{([^}]+)\}/g;
+      const matches = [...(paper.content || '').matchAll(inputRegex)];
+      
+      if (matches.length > 0) {
+        // Template project - find sections from input files
+        matches.forEach((match) => {
+          let inputPath = match[1].trim();
+          if (!inputPath.endsWith('.tex')) {
+            inputPath += '.tex';
+          }
+          const matchedFile = allProjectPapers.find(p => p.filename === inputPath || p.name === inputPath);
+          if (matchedFile && matchedFile.content) {
+            const fileSections = extractSectionsFromText(matchedFile.content, matchedFile.id);
+            sections = sections.concat(fileSections);
+          }
+        });
+      } else {
+        // Uploaded custom project - find sections directly in main.tex content
+        sections = extractSectionsFromText(paper.content || '', paper.id);
+      }
+
+      // Fallback to default mock sections if absolutely none were found
+      if (sections.length === 0) {
+        sections = [
+          { id: 'sec-1', sectionTitle: '1. Introduction' },
+          { id: 'sec-2', sectionTitle: '2. Methodology' },
+          { id: 'sec-3', sectionTitle: '3. Results & Discussion' },
+          { id: 'sec-4', sectionTitle: '4. Conclusion' }
+        ];
+      }
+
       return respond200(sections);
     }
 
