@@ -56,6 +56,9 @@ export default function mockAdapter(config) {
           { id: 104, email: 'student4@evidencepilot.edu', password: '123', role: 'STUDENT', firstName: 'Phạm', lastName: 'Văn D', age: 23 },
           { id: 105, email: 'student5@evidencepilot.edu', password: '123', role: 'STUDENT', firstName: 'Hoàng', lastName: 'Thị E', age: 22 },
           { id: 2, email: 'instructor.test@fpt.edu.vn', password: '123', role: 'INSTRUCTOR', firstName: 'Dr. Phạm', lastName: 'Thị B', age: 45 },
+          { id: 201, email: 'instructor2@evidencepilot.edu', password: '123', role: 'INSTRUCTOR', firstName: 'Prof. Nguyễn', lastName: 'Văn X', age: 48 },
+          { id: 202, email: 'instructor3@evidencepilot.edu', password: '123', role: 'INSTRUCTOR', firstName: 'Dr. Lê', lastName: 'Thị Y', age: 42 },
+          { id: 203, email: 'instructor4@evidencepilot.edu', password: '123', role: 'INSTRUCTOR', firstName: 'MSc. Hoàng', lastName: 'Văn Z', age: 39 },
           { id: 3, email: 'admin@evidencepilot.edu', password: '123', role: 'ADMIN', firstName: 'Hệ thống', lastName: 'Admin', age: 30 }
         ]);
         setDB('projects', [
@@ -270,6 +273,24 @@ export default function mockAdapter(config) {
         }
         
         localStorage.setItem('mock_db_initialized_collections_v4', 'true');
+      }
+
+      // Đảm bảo các tài khoản giảng viên bổ sung luôn được thêm vào DB mà không làm mất dữ liệu hiện tại
+      const users = getDB('users', []);
+      const extraInstructors = [
+        { id: 201, email: 'instructor2@evidencepilot.edu', password: '123', role: 'INSTRUCTOR', firstName: 'Prof. Nguyễn', lastName: 'Văn X', age: 48 },
+        { id: 202, email: 'instructor3@evidencepilot.edu', password: '123', role: 'INSTRUCTOR', firstName: 'Dr. Lê', lastName: 'Thị Y', age: 42 },
+        { id: 203, email: 'instructor4@evidencepilot.edu', password: '123', role: 'INSTRUCTOR', firstName: 'MSc. Hoàng', lastName: 'Văn Z', age: 39 }
+      ];
+      let hasUpdatedUsers = false;
+      extraInstructors.forEach(inst => {
+        if (!users.some(u => u.email === inst.email)) {
+          users.push(inst);
+          hasUpdatedUsers = true;
+        }
+      });
+      if (hasUpdatedUsers) {
+        setDB('users', users);
       }
     };
     initDB();
