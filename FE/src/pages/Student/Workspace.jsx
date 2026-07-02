@@ -3549,45 +3549,82 @@ export default function Workspace() {
 
               {/* Member Invitation Panel (PL Only) */}
               {project?.ownerId === currentUser?.id && (
-                <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
-                  <h4 className="font-extrabold text-slate-700 uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
-                    <span>➕</span> Mời thành viên mới
+                <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm space-y-3.5">
+                  <h4 className="font-extrabold text-slate-700 uppercase tracking-wider flex items-center gap-1.5 border-b border-slate-100 pb-2">
+                    <span>➕</span> {language === 'vi' ? 'Mời thành viên mới' : 'Invite New Member'}
                   </h4>
-                  <div className="flex gap-2">
-                    <select
-                      id="team-invite-select"
-                      className="flex-1 border border-slate-200 rounded-lg px-3 py-2 text-slate-700 bg-white text-xs font-medium"
-                      defaultValue=""
-                    >
-                      <option value="" disabled>-- Chọn sinh viên --</option>
-                      {allStudents
-                        ?.filter(s => !project.members?.some(m => m.email === s.email))
-                        ?.map(s => (
-                          <option key={s.id} value={s.email}>{s.firstName} {s.lastName} ({s.email})</option>
-                        ))
-                      }
-                    </select>
+                  <div className="space-y-3">
+                    <div className="flex flex-col gap-1">
+                      <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">{language === 'vi' ? 'Chọn từ danh sách hệ thống' : 'Select from system list'}</span>
+                      <select
+                        id="team-invite-select"
+                        className="w-full border border-slate-200 rounded-lg px-3 py-2 text-slate-700 bg-white text-xs font-medium outline-none focus:border-indigo-500 transition-colors"
+                        defaultValue=""
+                      >
+                        <option value="" disabled>-- {language === 'vi' ? 'Chọn sinh viên' : 'Select student'} --</option>
+                        {allStudents
+                          ?.filter(s => !project.members?.some(m => m.email === s.email))
+                          ?.map(s => (
+                            <option key={s.id} value={s.email}>{s.firstName} {s.lastName} ({s.email})</option>
+                          ))
+                        }
+                      </select>
+                    </div>
+
+                    <div className="flex flex-col gap-1">
+                      <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">{language === 'vi' ? 'Hoặc nhập email mới trực tiếp' : 'Or enter new email directly'}</span>
+                      <input
+                        type="email"
+                        id="team-invite-email-input"
+                        placeholder="example@evidencepilot.edu"
+                        className="w-full border border-slate-200 rounded-lg px-3 py-2 text-slate-700 bg-white text-xs font-medium outline-none focus:border-indigo-500 transition-colors"
+                      />
+                    </div>
+
                     <button
                       onClick={async () => {
                         const selectEl = document.getElementById('team-invite-select');
-                        const email = selectEl.value;
-                        if (!email) return;
+                        const inputEl = document.getElementById('team-invite-email-input');
+                        
+                        let email = selectEl.value;
+                        if (!email && inputEl) {
+                          email = inputEl.value.trim();
+                        }
+                        
+                        if (!email) {
+                          showToast(language === 'vi' ? 'Vui lòng chọn hoặc nhập email thành viên!' : 'Please select or enter a member email!');
+                          return;
+                        }
+                        
+                        // Validate email basic regex
+                        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                        if (!emailRegex.test(email)) {
+                          showToast(language === 'vi' ? 'Định dạng email không hợp lệ!' : 'Invalid email format!');
+                          return;
+                        }
+
                         const updatedMembers = [...(project.members || []), { email, role: 'RW' }];
                         try {
                           const res = await api.put(`/api/projects/${project.id}/members`, {
                             members: updatedMembers
                           });
                           setProject(res.data);
+                          
+                          // Tải lại danh sách học sinh để lấy học sinh vừa được tự động đăng ký
+                          const studentRes = await api.get('/api/users/students');
+                          setAllStudents(studentRes.data || []);
+
                           selectEl.value = "";
-                          showToast('Đã mời thành viên thành công!');
+                          if (inputEl) inputEl.value = "";
+                          showToast(language === 'vi' ? 'Đã thêm thành viên thành công!' : 'Member added successfully!');
                         } catch (err) {
                           console.error(err);
-                          showToast('Lỗi khi mời thành viên!');
+                          showToast(language === 'vi' ? 'Lỗi khi thêm thành viên!' : 'Failed to add member!');
                         }
                       }}
-                      className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-lg transition shadow-sm cursor-pointer text-xs"
+                      className="w-full py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-lg transition-all shadow-sm cursor-pointer text-xs text-center hover:scale-101 duration-150 active:scale-99"
                     >
-                      Mời
+                      {language === 'vi' ? 'Thêm vào nhóm' : 'Add to Team'}
                     </button>
                   </div>
                 </div>

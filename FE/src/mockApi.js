@@ -934,6 +934,29 @@ export default function mockAdapter(config) {
 
       if (members) {
         projects[pIdx].members = members;
+        
+        // Đăng ký động người dùng mới vào danh sách sinh viên nếu email chưa tồn tại
+        const users = getDB('users', []);
+        let usersUpdated = false;
+        members.forEach(m => {
+          if (!users.some(u => u.email === m.email)) {
+            const emailPrefix = m.email.split('@')[0];
+            const cleanPrefix = emailPrefix.split(/[._-]/).map(part => part.charAt(0).toUpperCase() + part.slice(1)).join(' ');
+            users.push({
+              id: 300 + Math.floor(Math.random() * 1000),
+              email: m.email,
+              password: '123',
+              role: 'STUDENT',
+              firstName: cleanPrefix,
+              lastName: '(Guest)',
+              age: 22
+            });
+            usersUpdated = true;
+          }
+        });
+        if (usersUpdated) {
+          setDB('users', users);
+        }
       }
       setDB('projects', projects);
 
