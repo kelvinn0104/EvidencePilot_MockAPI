@@ -611,6 +611,32 @@ export default function Workspace() {
       showToast("Xóa dự án thất bại");
     }
   };
+  const reloadFeedbacks = async () => {
+    try {
+      const fbRes = await api.get('/api/feedback-requests');
+      const allFbs = fbRes.data || [];
+      const projectFbs = allFbs.filter(fb => String(fb.projectId) === String(projectId));
+      setFeedbacks(projectFbs);
+    } catch (e) {
+      console.error('Failed to reload feedbacks', e);
+    }
+  };
+
+  const handleSendReply = async (feedbackId, text) => {
+    if (!text.trim()) return;
+    try {
+      const payload = {
+        content: text,
+        authorName: currentUser ? `${currentUser.firstName} ${currentUser.lastName}` : 'Sinh viên',
+        authorRole: 'STUDENT'
+      };
+      await api.post(`/api/feedbacks/${feedbackId}/replies`, payload);
+      await reloadFeedbacks();
+    } catch (error) {
+      console.error('Failed to submit comment reply:', error);
+      alert('Không thể gửi phản hồi. Vui lòng thử lại sau.');
+    }
+  };
 
   // Tải lên Tài liệu tham khảo (Source)
   const handleUploadSource = async (file) => {
@@ -3292,12 +3318,65 @@ export default function Workspace() {
                           <p className="text-red-600 font-medium">Yêu cầu duyệt của bạn bị từ chối.</p>
                         )}
                         {fb.content && (
-                          <div className="mt-2.5 pt-2.5 border-t border-slate-100 bg-slate-50 p-2.5 rounded-lg text-slate-650">
-                            <span className="font-bold text-slate-800 flex items-center gap-1 mb-1">
-                              💬 Nhận xét chi tiết:
-                            </span>
-                            <p className="whitespace-pre-wrap font-mono text-[11px] leading-relaxed text-slate-600">{fb.content}</p>
-                          </div>
+                          <>
+                            <div className="mt-2.5 pt-2.5 border-t border-slate-100 bg-slate-50 p-2.5 rounded-lg text-slate-650">
+                              <span className="font-bold text-slate-800 flex items-center gap-1 mb-1">
+                                💬 Nhận xét chi tiết:
+                              </span>
+                              <p className="whitespace-pre-wrap font-mono text-[11px] leading-relaxed text-slate-600">{fb.content}</p>
+                            </div>
+
+                            {/* Thread phản hồi kiểu Google Docs */}
+                            <div className="mt-3 pl-4 border-l-2 border-indigo-200 space-y-2">
+                              {fb.replies && fb.replies.map((reply) => (
+                                <div key={reply.id} className="bg-slate-50 p-2 rounded-lg text-[11px]">
+                                  <div className="flex justify-between items-center mb-0.5">
+                                    <span className="font-bold text-indigo-700">
+                                      {reply.authorName} 
+                                      <span className={`ml-1.5 px-1 py-0.2 rounded text-[9px] uppercase font-bold border ${reply.authorRole === 'INSTRUCTOR' ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-indigo-50 text-indigo-700 border-indigo-200'}`}>
+                                        {reply.authorRole === 'INSTRUCTOR' ? (language === 'vi' ? 'Giảng viên' : 'Instructor') : (language === 'vi' ? 'Sinh viên' : 'Student')}
+                                      </span>
+                                    </span>
+                                    <span className="text-[9px] text-gray-400">
+                                      {new Date(reply.createdAt).toLocaleString(language === 'vi' ? 'vi-VN' : 'en-US', {hour: '2-digit', minute:'2-digit', day: '2-digit', month: '2-digit'})}
+                                    </span>
+                                  </div>
+                                  <p className="text-slate-650 mt-0.5 leading-relaxed">{reply.content}</p>
+                                </div>
+                              ))}
+
+                              {/* Form nhập phản hồi */}
+                              <div className="flex items-center gap-2 mt-2 pt-2 border-t border-slate-100">
+                                <input
+                                  type="text"
+                                  placeholder={language === 'vi' ? "Nhập câu trả lời phản hồi..." : "Type a reply comment..."}
+                                  id={`reply-input-${fb.id}`}
+                                  className="flex-1 bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1 text-[11px] text-slate-700 focus:outline-none focus:border-indigo-500"
+                                  onKeyDown={async (e) => {
+                                    if (e.key === 'Enter' && e.target.value.trim()) {
+                                      const text = e.target.value.trim();
+                                      e.target.value = '';
+                                      await handleSendReply(fb.id, text);
+                                    }
+                                  }}
+                                />
+                                <button
+                                  type="button"
+                                  onClick={async () => {
+                                    const input = document.getElementById(`reply-input-${fb.id}`);
+                                    if (input && input.value.trim()) {
+                                      const text = input.value.trim();
+                                      input.value = '';
+                                      await handleSendReply(fb.id, text);
+                                    }
+                                  }}
+                                  className="bg-indigo-600 hover:bg-indigo-700 text-white text-[10px] font-bold px-2.5 py-1 rounded-lg cursor-pointer transition-colors shadow-xs"
+                                >
+                                  {language === 'vi' ? 'Gửi' : 'Send'}
+                                </button>
+                              </div>
+                            </div>
+                          </>
                         )}
                       </div>
                     </div>

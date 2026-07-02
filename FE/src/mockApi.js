@@ -1431,10 +1431,15 @@ export default function mockAdapter(config) {
       const req = feedbackRequests.find(r => r.id === reqId);
       if (!req) return respond404('Không tìm thấy yêu cầu.');
 
+      req.content = content;
+      if (!req.replies) req.replies = [];
+      setDB('feedbackRequests', feedbackRequests);
+
       const feedbacks = getDB('feedbacks', []);
       const existingFbIdx = feedbacks.findIndex(f => f.requestId === reqId);
       if (existingFbIdx !== -1) {
         feedbacks[existingFbIdx].content = content;
+        if (!feedbacks[existingFbIdx].replies) feedbacks[existingFbIdx].replies = [];
       } else {
         feedbacks.push({
           id: 'fb-' + Math.random().toString(36).substr(2, 9),
@@ -1445,7 +1450,8 @@ export default function mockAdapter(config) {
           instructorId: req.instructorId,
           content,
           status: req.status === 'APPROVED' ? 'REVIEWED' : req.status,
-          requestedAt: new Date().toISOString()
+          requestedAt: new Date().toISOString(),
+          replies: []
         });
       }
       setDB('feedbacks', feedbacks);
@@ -1535,6 +1541,40 @@ export default function mockAdapter(config) {
       setDB('feedbacks', feedbacks);
 
       return respond200({ message: `Trạng thái yêu cầu đã cập nhật thành công: ${action}` });
+    }
+
+    if (method === 'POST' && pathWithoutQuery.startsWith('/api/feedbacks/') && pathWithoutQuery.endsWith('/replies')) {
+      const parts = pathWithoutQuery.split('/');
+      const fbId = parts[3];
+      const { content, authorName, authorRole } = body;
+
+      const feedbacks = getDB('feedbacks', []);
+      const feedbackRequests = getDB('feedbackRequests', []);
+
+      let targetFb = feedbacks.find(f => f.id === fbId || f.requestId === fbId);
+      let targetReq = feedbackRequests.find(r => r.id === fbId || r.id === targetFb?.requestId);
+
+      const newReply = {
+        id: 'rep-' + Math.random().toString(36).substr(2, 9),
+        authorName: authorName || 'Anonymous',
+        authorRole: authorRole || 'STUDENT',
+        content: content,
+        createdAt: new Date().toISOString()
+      };
+
+      if (targetFb) {
+        if (!targetFb.replies) targetFb.replies = [];
+        targetFb.replies.push(newReply);
+      }
+      if (targetReq) {
+        if (!targetReq.replies) targetReq.replies = [];
+        targetReq.replies.push(newReply);
+      }
+
+      setDB('feedbacks', feedbacks);
+      setDB('feedbackRequests', feedbackRequests);
+
+      return respond201(newReply);
     }
 
     // 9. Admin Platform Metrics & Logs

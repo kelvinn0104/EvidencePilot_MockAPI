@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Fragment } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../api.js';
@@ -73,6 +73,26 @@ export default function ReviewRequests() {
     }
   };
 
+  const handleSendInstructorReply = async (requestId, text) => {
+    if (!text.trim()) return;
+    try {
+      const userRes = await api.get('/api/users/me');
+      const currentUser = userRes.data;
+      const authorName = currentUser ? `${currentUser.firstName} ${currentUser.lastName}` : 'Giảng viên';
+
+      const payload = {
+        content: text,
+        authorName: authorName,
+        authorRole: 'INSTRUCTOR'
+      };
+      await api.post(`/api/feedbacks/${requestId}/replies`, payload);
+      await fetchReviewRequests();
+    } catch (error) {
+      console.error('Failed to submit instructor reply:', error);
+      alert('Failed to send reply. Please try again.');
+    }
+  };
+
   useEffect(() => {
     fetchReviewRequests();
   }, []);
@@ -123,41 +143,108 @@ export default function ReviewRequests() {
                   <tr><td colSpan="3" className="px-6 py-8 text-center text-gray-400 font-medium">No pending project requests assigned to your instructor profile.</td></tr>
                 ) : (
                   requests.map((req) => (
-                    <tr key={req.id} className="hover:bg-gray-50/40 transition">
-                      <td className="px-6 py-4">
-                        <span className="font-bold text-gray-900 block text-xs">{req.projectTitle || (req.project?.title || req.project?.name || "Project Evaluation Node")}</span>
-                        {req.paperName && (
-                          <span className="text-[10px] text-indigo-600 font-bold bg-indigo-50 border border-indigo-100 px-1.5 py-0.5 rounded-md mt-1 inline-flex items-center gap-1 w-max">
-                            📄 Bản thảo: {req.paperName}
-                          </span>
-                        )}
-                        <span className="text-[10px] text-gray-400 font-mono block mt-1">Request ID: {req.id}</span>
-                      </td>
-                      <td className="px-6 py-4">
-                        <span className={`px-2 py-0.5 inline-block text-[9px] font-black rounded-md uppercase border ${
-                          req.status === 'PENDING' ? 'bg-amber-50 text-amber-700 border-amber-200' :
-                          req.status === 'APPROVED' || req.status === 'REVIEWED' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
-                          'bg-rose-50 text-rose-700 border-rose-200'
-                        }`}>{req.status}</span>
-                      </td>
-                      <td className="px-6 py-4 text-right">
-                        {/* CHỈ CÒN ĐÚNG 2 NÚT CHUẨN LUỒNG MỜI THAM GIA */}
-                        <div className="flex gap-2 justify-end">
-                          <button 
-                            onClick={() => setActiveActionNode({ req, type: 'APPROVE' })}
-                            className="px-3 py-1 bg-emerald-600 text-white font-bold text-[10px] rounded hover:bg-emerald-700 transition shadow-xs"
-                          >
-                            Accept & Join
-                          </button>
-                          <button 
-                            onClick={() => setActiveActionNode({ req, type: 'REJECT' })}
-                            className="px-3 py-1 bg-rose-600 text-white font-bold text-[10px] rounded hover:bg-rose-700 transition shadow-xs"
-                          >
-                            Reject
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
+                    <Fragment key={req.id}>
+                      <tr className="hover:bg-gray-50/40 transition">
+                        <td className="px-6 py-4">
+                          <span className="font-bold text-gray-900 block text-xs">{req.projectTitle || (req.project?.title || req.project?.name || "Project Evaluation Node")}</span>
+                          {req.paperName && (
+                            <span className="text-[10px] text-indigo-600 font-bold bg-indigo-50 border border-indigo-100 px-1.5 py-0.5 rounded-md mt-1 inline-flex items-center gap-1 w-max">
+                              📄 Bản thảo: {req.paperName}
+                            </span>
+                          )}
+                          <span className="text-[10px] text-gray-400 font-mono block mt-1">Request ID: {req.id}</span>
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className={`px-2 py-0.5 inline-block text-[9px] font-black rounded-md uppercase border ${
+                            req.status === 'PENDING' ? 'bg-amber-50 text-amber-700 border-amber-200' :
+                            req.status === 'APPROVED' || req.status === 'REVIEWED' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+                            'bg-rose-50 text-rose-700 border-rose-200'
+                          }`}>{req.status}</span>
+                        </td>
+                        <td className="px-6 py-4 text-right">
+                          {/* CHỈ CÒN ĐÚNG 2 NÚT CHUẨN LUỒNG MỜI THAM GIA */}
+                          <div className="flex gap-2 justify-end">
+                            <button 
+                              onClick={() => setActiveActionNode({ req, type: 'APPROVE' })}
+                              className="px-3 py-1 bg-emerald-600 text-white font-bold text-[10px] rounded hover:bg-emerald-700 transition shadow-xs"
+                            >
+                              Accept & Join
+                            </button>
+                            <button 
+                              onClick={() => setActiveActionNode({ req, type: 'REJECT' })}
+                              className="px-3 py-1 bg-rose-600 text-white font-bold text-[10px] rounded hover:bg-rose-700 transition shadow-xs"
+                            >
+                              Reject
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+
+                      {req.content && (
+                        <tr className="bg-gray-50/50">
+                          <td colSpan="3" className="px-6 pb-4 pt-1 border-b border-gray-100">
+                            <div className="bg-white rounded-xl border border-gray-200 p-4 max-w-3xl ml-4 space-y-3 text-left">
+                              {/* Instructor comment */}
+                              <div>
+                                <span className="font-bold text-slate-800 text-[10px] uppercase tracking-wide">Nhận xét của giảng viên:</span>
+                                <p className="text-xs text-gray-700 bg-gray-50 p-2.5 rounded-lg font-mono leading-relaxed mt-1">{req.content}</p>
+                              </div>
+
+                              {/* Replies thread */}
+                              <div className="pl-3 border-l-2 border-indigo-200 space-y-2">
+                                {req.replies && req.replies.map((reply) => (
+                                  <div key={reply.id} className="bg-slate-50 p-2 rounded-lg text-[11px] leading-relaxed">
+                                    <div className="flex justify-between items-center mb-0.5">
+                                      <span className="font-bold text-indigo-700">
+                                        {reply.authorName} 
+                                        <span className={`ml-1.5 px-1 py-0.2 rounded text-[9px] uppercase font-bold border ${reply.authorRole === 'INSTRUCTOR' ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-indigo-50 text-indigo-700 border-indigo-200'}`}>
+                                          {reply.authorRole === 'INSTRUCTOR' ? 'Instructor' : 'Student'}
+                                        </span>
+                                      </span>
+                                      <span className="text-[9px] text-gray-400">
+                                        {new Date(reply.createdAt).toLocaleString('vi-VN', {hour: '2-digit', minute:'2-digit', day: '2-digit', month: '2-digit'})}
+                                      </span>
+                                    </div>
+                                    <p className="text-gray-650 mt-0.5">{reply.content}</p>
+                                  </div>
+                                ))}
+
+                                {/* Instructor reply input form */}
+                                <div className="flex items-center gap-2 mt-2 pt-2 border-t border-gray-100">
+                                  <input
+                                    type="text"
+                                    placeholder="Type a reply comment to students..."
+                                    id={`instructor-reply-input-${req.id}`}
+                                    className="flex-1 bg-gray-50 border border-gray-200 rounded-lg px-2.5 py-1 text-xs text-gray-700 focus:outline-none focus:border-indigo-500"
+                                    onKeyDown={async (e) => {
+                                      if (e.key === 'Enter' && e.target.value.trim()) {
+                                        const text = e.target.value.trim();
+                                        e.target.value = '';
+                                        await handleSendInstructorReply(req.id, text);
+                                      }
+                                    }}
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={async () => {
+                                      const input = document.getElementById(`instructor-reply-input-${req.id}`);
+                                      if (input && input.value.trim()) {
+                                        const text = input.value.trim();
+                                        input.value = '';
+                                        await handleSendInstructorReply(req.id, text);
+                                      }
+                                    }}
+                                    className="bg-blue-600 hover:bg-blue-700 text-white text-[10px] font-bold px-3 py-1 rounded-lg cursor-pointer transition shadow-xs"
+                                  >
+                                    Reply
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </Fragment>
                   ))
                 )}
               </tbody>
