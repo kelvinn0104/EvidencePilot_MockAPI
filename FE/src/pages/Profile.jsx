@@ -15,6 +15,9 @@ export default function Profile() {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState(""); 
+  
+  // Chuỗi dấu chấm cố định hiển thị trực quan
+  const [password] = useState("••••••••"); 
   const [message, setMessage] = useState({ type: "", text: "" });
 
   // Tự động quét URL để xác định phân hệ đang truy cập
@@ -59,7 +62,7 @@ export default function Profile() {
     setSubmitting(true);
     setMessage({ type: "", text: "" });
 
-    // Đóng gói dữ liệu nhập từ form (Đã bỏ thuộc tính age)
+    // Đóng gói dữ liệu nhập từ form (Không gửi password vì ô này đã bị khóa)
     const formPayload = {
       firstName: firstName.trim(),
       lastName: lastName.trim(),
@@ -224,7 +227,18 @@ export default function Profile() {
                   />
                 </div>
 
-                {/* THAY Ô AGE THÀNH ASSIGNED SCOPE ROLE (DẠNG READ-ONLY ĐỂ BẢO MẬT PHÂN QUYỀN) */}
+                {/* Ô PASSWORD ĐÃ ĐƯỢC KHÓA BẰNG THUỘC TÍNH readOnly VÀ ĐỔI MÀU NỀN SANG GRAY-100 */}
+                <div className="space-y-1.5">
+                  <label className="text-gray-400 font-black uppercase tracking-wide text-[10px]">Password</label>
+                  <input 
+                    type="password" 
+                    value={password} 
+                    readOnly
+                    className="w-full px-4 py-3 bg-gray-100 border border-gray-200 rounded-xl font-medium text-gray-500 cursor-not-allowed selection:bg-transparent"
+                  />
+                </div>
+
+                {/* ASSIGNED SCOPE ROLE */}
                 <div className="space-y-1.5">
                   <label className="text-gray-400 font-black uppercase tracking-wide text-[10px]">Assigned Scope Role</label>
                   <input 
