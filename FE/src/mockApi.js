@@ -7,10 +7,10 @@ const initialMockData = {
     role: "INSTRUCTOR"
   },
   adminProfile: {
-    id: "usr_admin_root",
-    firstName: "Root",
-    lastName: "Administrator",
-    email: "admin.root@fpt.edu.vn",
+    id: "3",
+    firstName: "Hệ thống",
+    lastName: "Admin",
+    email: "admin@evidencepilot.edu",
     role: "ADMIN"
   },
   projects: [
@@ -182,7 +182,7 @@ const initialMockData = {
     {
       id: "log_02",
       timestamp: "2026-06-29 08:30:00",
-      username: "admin.root@fpt.edu.vn",
+      username: "admin@evidencepilot.edu",
       role: "ADMIN",
       action: "Modified security perimeter boundary rules",
       status: "SUCCESS"
@@ -874,6 +874,60 @@ export default function mockAdapter(config) {
       return respond200(projects);
     }
 
+    // Helper cho RBL-5
+    const assignPapersByRole = (members, papers) => {
+      // Map roles to emails
+      const roleMap = {
+        PL: [], RW: [], DG: [], LR: [], MS: []
+      };
+      members.forEach(m => {
+        if (roleMap[m.role]) {
+          roleMap[m.role].push(m.email);
+        } else if (m.role) {
+          roleMap[m.role] = [m.email]; // In case of unknown roles
+        }
+      });
+
+      const getAssignees = (roles) => {
+        let emails = [];
+        roles.forEach(r => {
+          if (roleMap[r]) emails = emails.concat(roleMap[r]);
+        });
+        return emails.length > 0 ? emails.join(', ') : '';
+      };
+
+      papers.forEach(p => {
+        if (p.filename.includes('00_abstract.tex')) p.assignedTo = getAssignees(['PL']);
+        else if (p.filename.includes('01_intro.tex')) p.assignedTo = getAssignees(['RW']);
+        else if (p.filename.includes('02_related.tex')) p.assignedTo = getAssignees(['DG']);
+        else if (p.filename.includes('03_method.tex')) p.assignedTo = getAssignees(['LR', 'MS']);
+        else if (p.filename.includes('04_results.tex')) p.assignedTo = getAssignees(['MS']);
+        else if (p.filename.includes('05_discussion.tex')) p.assignedTo = getAssignees(['PL', 'MS']);
+        else if (p.filename.includes('06_threats.tex')) p.assignedTo = getAssignees(['RW']);
+        else if (p.filename.includes('07_conclusion.tex')) p.assignedTo = getAssignees(['RW']);
+      });
+      return papers;
+    };
+
+    if (method === 'PUT' && pathWithoutQuery.match(/^\/api\/projects\/([^\/]+)\/members$/)) {
+      const projId = pathWithoutQuery.split('/')[3];
+      const projects = getDB('projects', []);
+      const pIdx = projects.findIndex(p => p.id === projId);
+      if (pIdx === -1) return respond404();
+
+      // Update members
+      projects[pIdx].members = body.members;
+      setDB('projects', projects);
+
+      // Re-assign papers
+      let papers = getDB('papers', []);
+      const projectPapers = papers.filter(p => p.projectId === projId);
+      assignPapersByRole(projects[pIdx].members, projectPapers);
+      setDB('papers', papers);
+
+      return respond200(projects[pIdx]);
+    }
+
     if (method === 'POST' && pathWithoutQuery === '/api/projects') {
       const projects = getDB('projects', []);
       const currentUser = getCurrentUserFromHeaders();
@@ -882,19 +936,19 @@ export default function mockAdapter(config) {
       const newProjId = 'proj-' + Math.random().toString(36).substr(2, 9);
       const title = body.title || 'Dự án mới';
       const description = body.description || '';
-      const instructorId = body.instructorId ? Number(body.instructorId) : 2;
+      const instructorId = body.instructorId ? Number(body.instructorId) : currentUser.id;
       const memberEmails = body.memberEmails || [];
+      const leaderEmail = body.leaderEmail || currentUser.email;
       const template = body.template || 'IEEE';
 
-      // Default creator is Project Leader (PL)
-      const projectMembers = [
-        { email: currentUser.email, role: 'PL' }
-      ];
+      const projectMembers = [];
+      if (leaderEmail) {
+        projectMembers.push({ email: leaderEmail.trim(), role: 'PL' });
+      }
 
-      // Add invited members
       memberEmails.forEach(email => {
-        if (email.trim() && email.trim() !== currentUser.email) {
-          projectMembers.push({ email: email.trim(), role: 'RW' }); // Default role RW
+        if (email.trim() && email.trim() !== leaderEmail.trim()) {
+          projectMembers.push({ email: email.trim(), role: '' });
         }
       });
 
@@ -903,7 +957,7 @@ export default function mockAdapter(config) {
         title,
         name: title,
         description,
-        ownerId: currentUser.id,
+        ownerId: currentUser.role === 'INSTRUCTOR' ? currentUser.id : instructorId,
         status: 'ACTIVE',
         createdAt: new Date().toISOString(),
         instructorId,
@@ -1020,18 +1074,19 @@ export default function mockAdapter(config) {
       const fileTemplates = [
         { id: `${newProjId}-main`, name: 'main.tex', filename: 'main.tex', content: mainContent },
         { id: `${newProjId}-bib`, name: 'references.bib', filename: 'references.bib', content: `@inproceedings{chen2023testgen,\n  author    = {Chen, Mark and others},\n  title     = {Evaluating Large Language Models for Unit Test Generation},\n  booktitle = {Proc. ICSE 2023},\n  year      = {2023},\n  doi       = {10.1145/3597503.3608135}\n}` },
-        { id: `${newProjId}-abstract`, name: 'sections/00_abstract.tex', filename: 'sections/00_abstract.tex', content: '% Abstract (PL)\nUnit test generation remains labor-intensive despite tools like EvoSuite. No prior study has evaluated GPT-4o mini for this task using mutation score as the primary metric. We apply GPT-4o mini to 200 Java functions from the Apache Commons dataset and measure mutation score and branch coverage. GPT-4o mini achieves median mutation score 61.3% vs EvoSuite 48.7%. Our results suggest LLM-generated tests can complement search-based tools, particularly for functions with complex logic.', assignedTo: currentUser.email },
-        { id: `${newProjId}-intro`, name: 'sections/01_intro.tex', filename: 'sections/01_intro.tex', content: '% Introduction (RW)\n\\section{Introduction}\n\\label{sec:intro}\nWriting software unit tests manually is time-consuming and error-prone. Recent studies have shown that Large Language Models (LLMs) can automate unit test generation. However, no study has evaluated GPT-4o mini on Java projects using mutation score as the primary metric.\n\nIn this paper, we present an empirical evaluation of GPT-4o mini. To summarize, this paper contributes:\n(1) The first empirical evaluation of GPT-4o mini for Java unit test generation.\n(2) Experimental results showing LLM-generated tests achieve higher mutation score.\n\nThe rest of this paper is structured as follows. Section \\ref{sec:related} discusses related work.', assignedTo: (memberEmails.length > 0 ? memberEmails[0] : currentUser.email) },
-        { id: `${newProjId}-related`, name: 'sections/02_related.tex', filename: 'sections/02_related.tex', content: '% Related Work (DG)\n\\section{Related Work}\n\\label{sec:related}\n\\subsection{LLM for Test Generation}\nSeveral researchers have explored LLMs for test generation. Chen et al. \\cite{chen2023testgen} evaluated LLMs on Python code. However, their study did not focus on Java or mutation coverage.\n\n\\subsection{Search-Based Software Testing}\nSearch-Based Software Testing (SBST) tools like EvoSuite use genetic algorithms to generate tests. While effective at coverage, they often generate tests with weak assertions. Unlike prior work, this paper is the first to directly compare GPT-4o mini with EvoSuite on Java libraries.', assignedTo: (memberEmails.length > 0 ? memberEmails[1 % memberEmails.length] : currentUser.email) },
-        { id: `${newProjId}-method`, name: 'sections/03_method.tex', filename: 'sections/03_method.tex', content: '% Methodology (LR)\n\\section{Methodology}\n\\label{sec:method}\n\\subsection{Dataset}\nWe select 200 Java functions from the Apache Commons library. These functions represent typical utility code with varying complexity.\n\n\\subsection{Experimental Setup}\nWe use the \\texttt{gpt-4o-mini-2024-07-18} model with temperature 0. The prompt template includes the signature and body of the target Java function. Our replication package, including datasets, prompts, scripts, and raw results, is publicly available at: \\url{https://github.com/evidencepilot/swt301-replication}.\n\n\\subsection{Metrics}\nWe measure mutation score using PITest, and branch coverage using JaCoCo.', assignedTo: (memberEmails.length > 0 ? memberEmails[2 % memberEmails.length] : currentUser.email) },
-        { id: `${newProjId}-results`, name: 'sections/04_results.tex', filename: 'sections/04_results.tex', content: '% Results (MS)\n\\section{Results}\n\\label{sec:results}\nTable \\ref{tab:results} shows the mutation scores for each tool. The median mutation score of GPT-4o mini is 61.3% (IQR: [55%, 72%]). The Wilcoxon signed-rank test yields $p=0.007$, showing statistical significance with Cliff\'s delta $\\delta=0.21$ (small effect size).\n\n\\begin{table}[h]\n\\caption{Mutation Score Comparison}\n\\label{tab:results}\n\\begin{center}\n\\begin{tabular}{lccc}\n\\toprule\n\\textbf{Condition} & \\textbf{Mutation Score} & \\textbf{p-value} & \\textbf{Effect Size} \\\\\n\\midrule\nEvoSuite & 0.48 $\\pm$ 0.12 & — & — \\\\\nGPT-4o mini & 0.61 $\\pm$ 0.09 & p=0.007 & $\\delta$=0.21 (small) \\\\\n\\bottomrule\n\\end{tabular}\n\\end{center}\n\\end{table}', assignedTo: (memberEmails.length > 0 ? memberEmails[3 % memberEmails.length] : currentUser.email) },
-        { id: `${newProjId}-discussion`, name: 'sections/05_discussion.tex', filename: 'sections/05_discussion.tex', content: '% Discussion (PL)\n\\section{Discussion}\n\\label{sec:discussion}\n\\subsection{Qualitative Analysis of Failures}\nWe observe that GPT-4o mini struggles with complex mathematical constraints, producing uncompilable assertions in 5% of cases.\n\n\\subsection{Comparison with Prior Work}\nOur results confirm the findings of Chen et al. \\cite{chen2023testgen} that LLMs generate more readable assertions than search-based tools.', assignedTo: currentUser.email },
-        { id: `${newProjId}-threats`, name: 'sections/06_threats.tex', filename: 'sections/06_threats.tex', content: '% Threats to Validity (RW)\n\\section{Threats to Validity}\n\\label{sec:threats}\n\\begin{itemize}\n\\item \\textbf{Internal:} The stochastic nature of LLMs could cause variations in results. We mitigated this by setting temperature to 0.\n\\item \\textbf{External:} Our findings are limited to Java functions from Apache Commons, which may not generalize to other programming languages.\n\\end{itemize}', assignedTo: (memberEmails.length > 0 ? memberEmails[4 % memberEmails.length] : currentUser.email) },
-        { id: `${newProjId}-conclusion`, name: 'sections/07_conclusion.tex', filename: 'sections/07_conclusion.tex', content: '% Conclusion (RW)\n\\section{Conclusion}\n\\label{sec:conclusion}\nWe evaluated GPT-4o mini on Java unit test generation. Results show that GPT-4o mini outperforms EvoSuite with a median mutation score of 61.3%. Future work could investigate prompt engineering techniques to improve compilability.', assignedTo: (memberEmails.length > 0 ? memberEmails[5 % memberEmails.length] : currentUser.email) }
+        { id: `${newProjId}-abstract`, name: 'sections/00_abstract.tex', filename: 'sections/00_abstract.tex', content: '% Abstract (PL)\nUnit test generation remains labor-intensive despite tools like EvoSuite. No prior study has evaluated GPT-4o mini for this task using mutation score as the primary metric. We apply GPT-4o mini to 200 Java functions from the Apache Commons dataset and measure mutation score and branch coverage. GPT-4o mini achieves median mutation score 61.3% vs EvoSuite 48.7%. Our results suggest LLM-generated tests can complement search-based tools, particularly for functions with complex logic.', assignedTo: '' },
+        { id: `${newProjId}-intro`, name: 'sections/01_intro.tex', filename: 'sections/01_intro.tex', content: '% Introduction (RW)\n\\section{Introduction}\n\\label{sec:intro}\nWriting software unit tests manually is time-consuming and error-prone. Recent studies have shown that Large Language Models (LLMs) can automate unit test generation. However, no study has evaluated GPT-4o mini on Java projects using mutation score as the primary metric.\n\nIn this paper, we present an empirical evaluation of GPT-4o mini. To summarize, this paper contributes:\n(1) The first empirical evaluation of GPT-4o mini for Java unit test generation.\n(2) Experimental results showing LLM-generated tests achieve higher mutation score.\n\nThe rest of this paper is structured as follows. Section \\ref{sec:related} discusses related work.', assignedTo: '' },
+        { id: `${newProjId}-related`, name: 'sections/02_related.tex', filename: 'sections/02_related.tex', content: '% Related Work (DG)\n\\section{Related Work}\n\\label{sec:related}\n\\subsection{LLM for Test Generation}\nSeveral researchers have explored LLMs for test generation. Chen et al. \\cite{chen2023testgen} evaluated LLMs on Python code. However, their study did not focus on Java or mutation coverage.\n\n\\subsection{Search-Based Software Testing}\nSearch-Based Software Testing (SBST) tools like EvoSuite use genetic algorithms to generate tests. While effective at coverage, they often generate tests with weak assertions. Unlike prior work, this paper is the first to directly compare GPT-4o mini with EvoSuite on Java libraries.', assignedTo: '' },
+        { id: `${newProjId}-method`, name: 'sections/03_method.tex', filename: 'sections/03_method.tex', content: '% Methodology (LR)\n\\section{Methodology}\n\\label{sec:method}\n\\subsection{Dataset}\nWe select 200 Java functions from the Apache Commons library. These functions represent typical utility code with varying complexity.\n\n\\subsection{Experimental Setup}\nWe use the \\texttt{gpt-4o-mini-2024-07-18} model with temperature 0. The prompt template includes the signature and body of the target Java function. Our replication package, including datasets, prompts, scripts, and raw results, is publicly available at: \\url{https://github.com/evidencepilot/swt301-replication}.\n\n\\subsection{Metrics}\nWe measure mutation score using PITest, and branch coverage using JaCoCo.', assignedTo: '' },
+        { id: `${newProjId}-results`, name: 'sections/04_results.tex', filename: 'sections/04_results.tex', content: '% Results (MS)\n\\section{Results}\n\\label{sec:results}\nTable \\ref{tab:results} shows the mutation scores for each tool. The median mutation score of GPT-4o mini is 61.3% (IQR: [55%, 72%]). The Wilcoxon signed-rank test yields $p=0.007$, showing statistical significance with Cliff\'s delta $\\delta=0.21$ (small effect size).\n\n\\begin{table}[h]\n\\caption{Mutation Score Comparison}\n\\label{tab:results}\n\\begin{center}\n\\begin{tabular}{lccc}\n\\toprule\n\\textbf{Condition} & \\textbf{Mutation Score} & \\textbf{p-value} & \\textbf{Effect Size} \\\\\n\\midrule\nEvoSuite & 0.48 $\\pm$ 0.12 & — & — \\\\\nGPT-4o mini & 0.61 $\\pm$ 0.09 & p=0.007 & $\\delta$=0.21 (small) \\\\\n\\bottomrule\n\\end{tabular}\n\\end{center}\n\\end{table}', assignedTo: '' },
+        { id: `${newProjId}-discussion`, name: 'sections/05_discussion.tex', filename: 'sections/05_discussion.tex', content: '% Discussion (PL)\n\\section{Discussion}\n\\label{sec:discussion}\n\\subsection{Qualitative Analysis of Failures}\nWe observe that GPT-4o mini struggles with complex mathematical constraints, producing uncompilable assertions in 5% of cases.\n\n\\subsection{Comparison with Prior Work}\nOur results confirm the findings of Chen et al. \\cite{chen2023testgen} that LLMs generate more readable assertions than search-based tools.', assignedTo: '' },
+        { id: `${newProjId}-threats`, name: 'sections/06_threats.tex', filename: 'sections/06_threats.tex', content: '% Threats to Validity (RW)\n\\section{Threats to Validity}\n\\label{sec:threats}\n\\begin{itemize}\n\\item \\textbf{Internal:} The stochastic nature of LLMs could cause variations in results. We mitigated this by setting temperature to 0.\n\\item \\textbf{External:} Our findings are limited to Java functions from Apache Commons, which may not generalize to other programming languages.\n\\end{itemize}', assignedTo: '' },
+        { id: `${newProjId}-conclusion`, name: 'sections/07_conclusion.tex', filename: 'sections/07_conclusion.tex', content: '% Conclusion (RW)\n\\section{Conclusion}\n\\label{sec:conclusion}\nWe evaluated GPT-4o mini on Java unit test generation. Results show that GPT-4o mini outperforms EvoSuite with a median mutation score of 61.3%. Future work could investigate prompt engineering techniques to improve compilability.', assignedTo: '' }
       ];
 
+      let projectPapers = [];
       fileTemplates.forEach(t => {
-        papers.push({
+        projectPapers.push({
           id: t.id,
           projectId: newProjId,
           name: t.name,
@@ -1046,6 +1101,11 @@ export default function mockAdapter(config) {
           comments: []
         });
       });
+      
+      // Auto assign right at creation if PL is set
+      assignPapersByRole(projectMembers, projectPapers);
+      projectPapers.forEach(p => papers.push(p));
+      
       setDB('papers', papers);
 
       return respond201(newProject);

@@ -7,7 +7,6 @@ import Login from './pages/Login.jsx';
 import Register from './pages/Register.jsx';
 
 import Profile from './pages/Profile.jsx';
-import ReviewRequests from './pages/Instructor/ReviewRequests.jsx';
 import InstructorDashboard from './pages/Instructor/Dashboard.jsx';
 import CollectionList from './pages/Instructor/CollectionList.jsx';
 import CreateCollection from './pages/Instructor/CreateCollection.jsx';
@@ -38,9 +37,6 @@ function App() {
             <Route path="/instructor/dashboard" element={
               <ProtectedRoute allowedRoles={['INSTRUCTOR', 'ADMIN']}><InstructorDashboard /></ProtectedRoute>
             } />
-            <Route path="/instructor/requests" element={
-              <ProtectedRoute allowedRoles={['INSTRUCTOR', 'ADMIN']}><ReviewRequests /></ProtectedRoute>
-            } />
             <Route path="/instructor/collections" element={
               <ProtectedRoute allowedRoles={['INSTRUCTOR', 'ADMIN']}><CollectionList /></ProtectedRoute>
             } />
@@ -56,7 +52,7 @@ function App() {
               <ProtectedRoute allowedRoles={['STUDENT']}><StudentProjects /></ProtectedRoute>
             } />
             <Route path="/student/projects/:projectId" element={
-              <ProtectedRoute allowedRoles={['STUDENT']}><Workspace /></ProtectedRoute>
+              <ProtectedRoute allowedRoles={['STUDENT', 'INSTRUCTOR']}><Workspace /></ProtectedRoute>
             } />
           </Routes>
         </LanguageProvider>

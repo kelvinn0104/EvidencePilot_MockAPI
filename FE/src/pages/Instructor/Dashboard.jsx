@@ -9,7 +9,6 @@ export default function InstructorDashboard() {
 
   // --- 1. STATES MANAGEMENT ---
   const [projects, setProjects] = useState([]);
-  const [invitations, setInvitations] = useState([]);
   const [totalElements, setTotalElements] = useState(0);
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
@@ -26,7 +25,28 @@ export default function InstructorDashboard() {
   const [aiReviewResult, setAiReviewResult] = useState(null);
   const [inspectingPaperId, setInspectingPaperId] = useState(null);
 
-  // --- 2. API CALLS ---
+  // --- 2. CREATE PROJECT STATES ---
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [wizardStep, setWizardStep] = useState(1);
+  const [newTitle, setNewTitle] = useState('');
+  const [newDescription, setNewDescription] = useState('');
+  const [allStudents, setAllStudents] = useState([]);
+  const [selectedPLId, setSelectedPLId] = useState('');
+  const [invitedEmails, setInvitedEmails] = useState([]);
+  const [studentEmailInput, setStudentEmailInput] = useState('');
+  const [uploadedSources, setUploadedSources] = useState([]);
+  const [paperOption, setPaperOption] = useState('TEMPLATE');
+  const [selectedTemplate, setSelectedTemplate] = useState('IEEE');
+  const [uploadedPaperFile, setUploadedPaperFile] = useState(null);
+  const [creating, setCreating] = useState(false);
+
+  // Notifications
+  const [showNotifications, setShowNotifications] = useState(false);
+  const notifications = [
+    { id: 1, text: "Sinh viên nguyenvanA@fpt.edu.vn đã gửi yêu cầu review cho phần Abstract trong dự án Agile Evaluation", projectId: 1, isRead: false }
+  ];
+
+  // --- 3. API CALLS ---
   const fetchInstructorProjects = async () => {
     setLoading(true);
     setErrorMessage("");
@@ -54,17 +74,10 @@ export default function InstructorDashboard() {
       const activeProjects = rawProjects.filter(project => {
         const isAssigned = (project.instructorIds && Array.isArray(project.instructorIds) && project.instructorIds.map(id => Number(id)).includes(currentInstructorId)) ||
                            (project.instructorId && Number(project.instructorId) === currentInstructorId);
-        return isAssigned && project.instructorStatus !== 'PENDING' && project.instructorStatus !== 'REJECTED';
-      });
-
-      const pendingInvitations = rawProjects.filter(project => {
-        const isAssigned = (project.instructorIds && Array.isArray(project.instructorIds) && project.instructorIds.map(id => Number(id)).includes(currentInstructorId)) ||
-                           (project.instructorId && Number(project.instructorId) === currentInstructorId);
-        return isAssigned && project.instructorStatus === 'PENDING';
+        return isAssigned && project.instructorStatus !== 'REJECTED';
       });
 
       setProjects(activeProjects);
-      setInvitations(pendingInvitations);
       setTotalElements(activeProjects.length);
 
     } catch (error) {
@@ -75,23 +88,7 @@ export default function InstructorDashboard() {
     }
   };
 
-  const handleAcceptInvitation = async (projId) => {
-    try {
-      await api.put(`/api/projects/${projId}/accept-invitation`);
-      fetchInstructorProjects();
-    } catch (error) {
-      console.error("Error accepting invitation:", error);
-    }
-  };
 
-  const handleRefuseInvitation = async (projId) => {
-    try {
-      await api.put(`/api/projects/${projId}/refuse-invitation`);
-      fetchInstructorProjects();
-    } catch (error) {
-      console.error("Error refusing invitation:", error);
-    }
-  };
 
   const handleInspectProject = async (project) => {
     setSelectedProject(project);
@@ -132,6 +129,79 @@ export default function InstructorDashboard() {
     fetchInstructorProjects();
   }, [page, statusFilter]);
 
+  useEffect(() => {
+    if (showCreateModal) {
+      setWizardStep(1);
+      setNewTitle('');
+      setNewDescription('');
+      setUploadedSources([]);
+      setPaperOption('TEMPLATE');
+      setSelectedTemplate('IEEE');
+      setUploadedPaperFile(null);
+      setInvitedEmails([]);
+      setStudentEmailInput('');
+      setSelectedPLId('');
+      
+      api.get('/api/users/students').then(res => {
+        setAllStudents(res.data);
+      }).catch(err => console.error(err));
+    }
+  }, [showCreateModal]);
+
+  const handleAddEmail = (email) => {
+    const cleanEmail = email.trim();
+    if (cleanEmail && !invitedEmails.includes(cleanEmail)) {
+      setInvitedEmails([...invitedEmails, cleanEmail]);
+    }
+    setStudentEmailInput('');
+  };
+
+  const handleRemoveEmail = (email) => {
+    setInvitedEmails(invitedEmails.filter(e => e !== email));
+  };
+
+  const handleCreateProject = async (e) => {
+    if (e) e.preventDefault();
+    if (!newTitle.trim()) return;
+    setCreating(true);
+    try {
+      const userRes = await api.get('/api/users/me');
+      const currentInstructorId = Number(userRes.data?.id);
+
+      const res = await api.post('/api/projects', {
+        title: newTitle.trim(),
+        description: newDescription.trim(),
+        instructorId: currentInstructorId,
+        memberEmails: invitedEmails,
+        template: paperOption === 'TEMPLATE' ? selectedTemplate : 'CUSTOM'
+      });
+      
+      const newProjId = res.data.id;
+
+      for (const file of uploadedSources) {
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('projectId', newProjId);
+        await api.post('/api/sources/upload', formData);
+      }
+
+      if (paperOption === 'UPLOAD' && uploadedPaperFile) {
+        const formData = new FormData();
+        formData.append('file', uploadedPaperFile);
+        formData.append('projectId', newProjId);
+        await api.post('/api/papers/upload', formData);
+      }
+
+      setShowCreateModal(false);
+      fetchInstructorProjects();
+    } catch (err) {
+      console.error('Failed to create project:', err);
+      alert(err.response?.data?.message || 'Failed to create project.');
+    } finally {
+      setCreating(false);
+    }
+  };
+
   const handleSearchSubmit = (e) => {
     e.preventDefault();
     setPage(0);
@@ -157,6 +227,42 @@ export default function InstructorDashboard() {
               <span className="text-xs font-semibold text-blue-50 tracking-wide uppercase">Instructor Mode</span>
             </div>
             
+            {/* Notification Bell */}
+            <div className="relative">
+              <button 
+                onClick={() => setShowNotifications(!showNotifications)}
+                className="relative p-2 text-blue-200 hover:text-white transition rounded-full hover:bg-white/10"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg>
+                {notifications.length > 0 && (
+                  <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full animate-pulse border border-[#1e3a8a]"></span>
+                )}
+              </button>
+              
+              {showNotifications && (
+                <div className="absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-xl border border-gray-100 overflow-hidden z-50">
+                  <div className="p-3 bg-gray-50 border-b border-gray-100 font-bold text-gray-700 text-sm flex justify-between items-center">
+                    Notifications
+                    <span className="text-[10px] bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">{notifications.length} New</span>
+                  </div>
+                  <div className="max-h-64 overflow-y-auto">
+                    {notifications.length === 0 ? (
+                      <div className="p-4 text-center text-xs text-gray-500">No new notifications.</div>
+                    ) : (
+                      notifications.map(n => (
+                        <div key={n.id} onClick={() => navigate(`/student/projects/${n.projectId}`)} className="p-3 border-b border-gray-50 hover:bg-indigo-50/50 cursor-pointer transition">
+                          <p className="text-xs text-gray-700 leading-snug">
+                            {n.text}
+                          </p>
+                          <span className="text-[10px] text-blue-600 font-bold mt-1 block">Click to review section →</span>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+
             <button
               onClick={() => navigate('/')}
               className="text-sm font-medium text-blue-200 hover:text-white transition"
@@ -180,26 +286,28 @@ export default function InstructorDashboard() {
 
       {/* Main Body */}
       <main className="max-w-7xl mx-auto p-8">
-        {/* Workspace Title */}
-        <div className="mb-8 border-b border-gray-200 pb-6">
-          <h1 className="text-3xl font-black text-[#1e3a8a] tracking-tight">Instructor Control Dashboard</h1>
-          <p className="text-xs text-gray-400 mt-1">
-            Real-time control node over active student research tracks, paper integrity telemetry, and AI compliance pipelines.
-          </p>
+        {/* Workspace Title & Create Button */}
+        <div className="mb-8 border-b border-gray-200 pb-6 flex justify-between items-end">
+          <div>
+            <h1 className="text-3xl font-black text-[#1e3a8a] tracking-tight">Instructor Control Dashboard</h1>
+            <p className="text-xs text-gray-400 mt-1">
+              Real-time control node over active student research tracks, paper integrity telemetry, and AI compliance pipelines.
+            </p>
+          </div>
+          <button
+            onClick={() => setShowCreateModal(true)}
+            className="px-5 py-2.5 bg-[#1e3a8a] text-white rounded-lg font-bold hover:bg-[#152e75] transition shadow-sm flex items-center gap-2 text-sm"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
+            </svg>
+            Create Project
+          </button>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8 text-xs">
-          {/* Ô 1: REVIEW REQUESTS */}
-          <div className="bg-white border border-gray-200 rounded-2xl p-5 shadow-sm hover:shadow-md transition flex flex-col justify-between min-h-[140px]">
-            <div className="space-y-1.5">
-              <h3 className="text-sm font-black text-[#1e3a8a] flex items-center gap-1.5">📋 Review Requests</h3>
-              <p className="text-gray-400 font-medium leading-relaxed">Evaluate data verification claims submitted by students, audit uploaded files, and provide feedback.</p>
-            </div>
-            <div className="pt-2">
-              <Link to="/instructor/requests" className="text-blue-600 font-bold hover:underline">Review Submissions →</Link>
-            </div>
-          </div>
 
+
+        <div className="grid grid-cols-1 md:grid-cols-1 gap-6 mb-8 text-xs">
           {/* Ô 2: MANAGE COLLECTIONS */}
           <div className="bg-white border border-gray-200 rounded-2xl p-5 shadow-sm hover:shadow-md transition flex flex-col justify-between min-h-[140px]">
             <div className="space-y-1.5">
@@ -253,53 +361,6 @@ export default function InstructorDashboard() {
           
           {/* LEFT: Paged Student Projects */}
           <div className="lg:col-span-2 space-y-4">
-            {invitations.length > 0 && (
-              <div className="bg-gradient-to-r from-amber-50 to-orange-50/50 border border-orange-200 rounded-3xl p-5 shadow-sm space-y-4">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-sm font-black text-orange-800 flex items-center gap-2">
-                    <span>📩 Lời mời tham gia hướng dẫn ({invitations.length})</span>
-                  </h3>
-                  <span className="bg-orange-100 text-orange-850 text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider animate-pulse">Cần phản hồi</span>
-                </div>
-                
-                <div className="space-y-3">
-                  {invitations.map((inv) => (
-                    <div key={inv.id} className="bg-white p-4 rounded-2xl border border-orange-100 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4 transition hover:border-orange-350">
-                      <div>
-                        <h4 className="font-bold text-gray-800 text-sm">{inv.title || inv.name}</h4>
-                        <p className="text-xs text-gray-500 mt-1">{inv.description || "Chưa có mô tả dự án."}</p>
-                        <div className="flex items-center gap-2 mt-2 text-[10px] font-bold text-gray-400">
-                          <span>📅 Ngày tạo: {new Date(inv.createdAt).toLocaleDateString('vi-VN')}</span>
-                          <span>•</span>
-                          <span>👤 Trưởng nhóm: {inv.members?.find(m => m.role === 'PL')?.email || 'N/A'}</span>
-                        </div>
-                      </div>
-                      
-                      <div className="flex items-center gap-2 shrink-0">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleAcceptInvitation(inv.id);
-                          }}
-                          className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-sm hover:shadow transition"
-                        >
-                          Đồng ý
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleRefuseInvitation(inv.id);
-                          }}
-                          className="px-4 py-2 bg-rose-50 hover:bg-rose-100 text-rose-600 font-bold text-xs rounded-xl border border-rose-200 transition"
-                        >
-                          Từ chối
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
 
             <div className="bg-white rounded-3xl border border-gray-200 shadow-sm overflow-hidden">
               <div className="p-4 bg-gray-50 border-b border-gray-100 flex justify-between items-center">
@@ -440,6 +501,102 @@ export default function InstructorDashboard() {
 
         </div>
       </main>
+    {/* Create Project Modal */}
+    {showCreateModal && (
+      <div className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div className="bg-white rounded-3xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col shadow-2xl">
+          <div className="px-8 py-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+            <div>
+              <h2 className="text-xl font-black text-gray-900">Create New Project</h2>
+              <p className="text-xs text-gray-500 mt-1">Setup project environment and assign students</p>
+            </div>
+            <button onClick={() => setShowCreateModal(false)} className="text-gray-400 hover:text-gray-600">
+              <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
+            </button>
+          </div>
+
+          <div className="p-8 overflow-y-auto flex-1">
+            <div className="space-y-6">
+              {/* Step 1: Basic Info */}
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-2">Project Title</label>
+                <input 
+                  type="text" 
+                  value={newTitle}
+                  onChange={(e) => setNewTitle(e.target.value)}
+                  placeholder="e.g. AI-driven Healthcare System"
+                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm font-medium"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-2">Description</label>
+                <textarea 
+                  value={newDescription}
+                  onChange={(e) => setNewDescription(e.target.value)}
+                  placeholder="Brief context about this project..."
+                  rows="3"
+                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm font-medium"
+                ></textarea>
+              </div>
+
+              {/* Step 2: Add Students */}
+              <div className="pt-4 border-t border-gray-100">
+                <label className="block text-xs font-bold text-gray-700 mb-2">Assign Students (Emails)</label>
+                <div className="flex gap-2 mb-3">
+                  <input
+                    type="email"
+                    value={studentEmailInput}
+                    onChange={(e) => setStudentEmailInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') { e.preventDefault(); handleAddEmail(e.target.value); }
+                    }}
+                    placeholder="student@fpt.edu.vn"
+                    className="flex-1 px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm"
+                  />
+                  <button 
+                    type="button" 
+                    onClick={() => handleAddEmail(studentEmailInput)}
+                    className="px-4 py-2.5 bg-blue-50 text-blue-700 font-bold text-xs rounded-xl hover:bg-blue-100 transition"
+                  >
+                    Add
+                  </button>
+                </div>
+                {invitedEmails.length > 0 && (
+                  <div className="flex flex-wrap gap-2">
+                    {invitedEmails.map(email => (
+                      <span key={email} className="inline-flex items-center gap-1.5 px-3 py-1 bg-gray-100 border border-gray-200 text-gray-700 text-[11px] font-medium rounded-full">
+                        {email}
+                        <button type="button" onClick={() => handleRemoveEmail(email)} className="hover:text-red-500 ml-1">&times;</button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="px-8 py-5 border-t border-gray-100 bg-gray-50 flex justify-end gap-3">
+            <button 
+              type="button" 
+              onClick={() => setShowCreateModal(false)}
+              className="px-5 py-2.5 text-gray-600 font-bold text-sm hover:bg-gray-100 rounded-xl transition"
+            >
+              Cancel
+            </button>
+            <button 
+              type="button" 
+              onClick={handleCreateProject}
+              disabled={creating || !newTitle.trim()}
+              className="px-6 py-2.5 bg-[#1e3a8a] text-white font-bold text-sm rounded-xl hover:bg-[#152e75] transition shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {creating ? 'Creating...' : 'Create Project'}
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+
     </div>
   );
 }

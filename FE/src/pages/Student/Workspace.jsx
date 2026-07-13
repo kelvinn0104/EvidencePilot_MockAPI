@@ -60,7 +60,9 @@ export default function Workspace() {
   const navigate = useNavigate();
   const { logout, user } = useAuth();
   const { language, toggleLanguage } = useLanguage();
-  const [activeTab, setActiveTab] = useState('Source');
+  const [activeTab, setActiveTab] = useState(() => {
+    return localStorage.getItem('student_workspace_active_tab') || 'Source';
+  });
   const [editorMode, setEditorMode] = useState('Code');
 
   const [toastMessage, setToastMessage] = useState('');
@@ -413,6 +415,10 @@ export default function Workspace() {
 
 
 
+  useEffect(() => {
+    localStorage.setItem('student_workspace_active_tab', activeTab);
+  }, [activeTab]);
+
   // 1. Tải thông tin người dùng hiện tại và danh sách giảng viên
   useEffect(() => {
     api.get('/api/users/me')
@@ -632,14 +638,37 @@ export default function Workspace() {
     try {
       const payload = {
         content: text,
-        authorName: currentUser ? `${currentUser.firstName} ${currentUser.lastName}` : 'Sinh viên',
-        authorRole: 'STUDENT'
+        authorName: currentUser ? `${currentUser.firstName} ${currentUser.lastName}` : 'Người dùng',
+        authorRole: currentUser?.role || 'STUDENT'
       };
       await api.post(`/api/feedbacks/${feedbackId}/replies`, payload);
       await reloadFeedbacks();
     } catch (error) {
       console.error('Failed to submit comment reply:', error);
       alert('Không thể gửi phản hồi. Vui lòng thử lại sau.');
+    }
+  };
+
+  const handleInstructorAction = async (feedbackId, type) => {
+    const reason = prompt(type === 'APPROVE' ? "Nhập nhận xét phê duyệt (tùy chọn):" : "Nhập lý do từ chối (bắt buộc):");
+    if (type === 'REJECT' && !reason?.trim()) {
+      alert("Bạn phải nhập lý do từ chối.");
+      return;
+    }
+    try {
+      if (reason?.trim()) {
+        const prefix = type === 'REJECT' ? '[Reject Reason]: ' : '[Approval Note]: ';
+        await api.post(`/api/feedback-requests/${feedbackId}/feedback`, {
+          content: `${prefix}${reason.trim()}`
+        });
+      }
+      let actionEndpoint = type === 'APPROVE' ? "reviewed" : "rejected";
+      await api.post(`/api/feedback-requests/${feedbackId}/${actionEndpoint}`);
+      await reloadFeedbacks();
+      alert(`Đã ${type === 'APPROVE' ? 'phê duyệt' : 'từ chối'} thành công!`);
+    } catch (error) {
+      console.error(error);
+      alert("Đã xảy ra lỗi.");
     }
   };
 
@@ -3369,6 +3398,22 @@ export default function Workspace() {
                               </div>
                             </div>
                           </>
+                        )}
+                        {currentUser?.role === 'INSTRUCTOR' && (fb.status === 'PENDING' || fb.status === 'SUBMITTED') && (
+                          <div className="flex gap-2 mt-3 pt-3 border-t border-slate-100">
+                            <button
+                              onClick={() => handleInstructorAction(fb.id, 'APPROVE')}
+                              className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold py-1.5 rounded-lg transition-colors shadow-sm"
+                            >
+                              {language === 'vi' ? 'Phê duyệt (Approve)' : 'Approve'}
+                            </button>
+                            <button
+                              onClick={() => handleInstructorAction(fb.id, 'REJECT')}
+                              className="flex-1 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold py-1.5 rounded-lg transition-colors shadow-sm"
+                            >
+                              {language === 'vi' ? 'Yêu cầu sửa (Reject)' : 'Request Changes'}
+                            </button>
+                          </div>
                         )}
                       </div>
                     </div>

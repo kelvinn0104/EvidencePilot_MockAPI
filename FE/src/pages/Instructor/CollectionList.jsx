@@ -12,7 +12,9 @@ export default function CollectionList() {
   const [papers, setPapers] = useState([]);
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
-  const [selectedProjectId, setSelectedProjectId] = useState("");
+  const [selectedProjectId, setSelectedProjectId] = useState(() => {
+    return localStorage.getItem('instructor_selected_project_id') || "";
+  });
 
   // --- STATES QUẢN LÝ MODAL CHỈNH SỬA (ĐA FILE & XOÁ FILE CŨ) ---
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -79,7 +81,8 @@ export default function CollectionList() {
       // 4. AN TOÀN: Gom dữ liệu từ từng Project endpoint và LocalStorage để hiển thị ngay lập tức khi vừa tạo
       if (assignedProjects.length > 0) {
         const firstProject = assignedProjects[0];
-        const activeTabId = selectedProjectId || firstProject.id;
+        const isValid = selectedProjectId && assignedProjects.some(p => String(p.id) === String(selectedProjectId));
+        const activeTabId = isValid ? selectedProjectId : firstProject.id;
         setSelectedProjectId(activeTabId);
         
         let accumulatedCollections = [];
@@ -323,6 +326,12 @@ export default function CollectionList() {
   useEffect(() => {
     fetchInitialData();
   }, []);
+
+  useEffect(() => {
+    if (selectedProjectId) {
+      localStorage.setItem('instructor_selected_project_id', String(selectedProjectId));
+    }
+  }, [selectedProjectId]);
 
   return (
     <div className="min-h-screen bg-[#f8fafc] text-[#0f172a] font-sans">

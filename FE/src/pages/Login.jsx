@@ -36,7 +36,11 @@ export default function Login() {
 
       login(token, role);
 
-      navigate('/');
+      if (role === 'ADMIN') {
+        navigate('/admin/dashboard');
+      } else {
+        navigate('/');
+      }
     } catch (err) {
       const msg = err.response?.data?.message
         ?? err.response?.data?.error
@@ -59,7 +63,11 @@ export default function Login() {
       if (!token) throw new Error('Token not found in response');
 
       login(token, role);
-      navigate('/');
+      if (role === 'ADMIN') {
+        navigate('/admin/dashboard');
+      } else {
+        navigate('/');
+      }
     } catch (err) {
       const msg = err.response?.data?.message
         ?? err.response?.data?.error
