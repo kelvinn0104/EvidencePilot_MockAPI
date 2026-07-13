@@ -246,7 +246,7 @@ export default function mockAdapter(config) {
     const initDB = () => {
       
 
-      if (!localStorage.getItem('mock_db_initialized_en_v15')) {
+      if (!localStorage.getItem('mock_db_initialized_en_v16')) {
         setDB('users', [
           { id: 1, email: 'student@evidencepilot.edu', password: '123', role: 'STUDENT', firstName: 'Nguyễn', lastName: 'Văn A', age: 21 },
           { id: 102, email: 'student2@evidencepilot.edu', password: '123', role: 'STUDENT', firstName: 'Trần', lastName: 'Văn B', age: 22 },
@@ -258,6 +258,7 @@ export default function mockAdapter(config) {
           { id: 201, email: 'instructor2@evidencepilot.edu', password: '123', role: 'INSTRUCTOR', firstName: 'Prof. Nguyễn', lastName: 'Văn X', age: 48 },
           { id: 202, email: 'instructor3@evidencepilot.edu', password: '123', role: 'INSTRUCTOR', firstName: 'Dr. Lê', lastName: 'Thị Y', age: 42 },
           { id: 203, email: 'instructor4@evidencepilot.edu', password: '123', role: 'INSTRUCTOR', firstName: 'MSc. Hoàng', lastName: 'Văn Z', age: 39 },
+          { id: 204, email: 'giangvien.test@fpt.edu.vn', password: '123', role: 'INSTRUCTOR', firstName: 'Giảng viên', lastName: 'Thử nghiệm', age: 40 },
           { id: 3, email: 'admin@evidencepilot.edu', password: '123', role: 'ADMIN', firstName: 'Hệ thống', lastName: 'Admin', age: 30 }
         ]);
         setDB('projects', [
@@ -445,7 +446,7 @@ export default function mockAdapter(config) {
           status: 'PENDING',
           requestedAt: initialRequest.requestedAt
         }]);
-        localStorage.setItem('mock_db_initialized_en_v15', 'true');
+        localStorage.setItem('mock_db_initialized_en_v16', 'true');
       }
 
       if (!localStorage.getItem('mock_db_initialized_collections_v4')) {
